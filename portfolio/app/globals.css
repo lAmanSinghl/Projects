@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import '@animated-burgers/burger-squeeze/dist/styles.css';
+
+.my-burger .burger-lines,
+.my-burger .burger-lines::before,
+.my-burger .burger-lines::after {
+  background-color: #000;
+}
+.skills-mask{
+
+    -webkit-mask-image:url("/masks/skills-mask.svg");
+    mask-image:url("/masks/skills-mask.svg");
+
+    -webkit-mask-size:100% 100%;
+    mask-size:100% 100%;
+
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+
+}
+.scroll-thumb {
+  position: fixed;
+  right: 20px;
+  width: 6px;
+  height: 60px;
+  border-radius: 999px;
+  background: white;
+
+  mix-blend-mode: difference;
+  z-index: 9999;
+  pointer-events: none;
+}
+@layer utilities {
+  .text-stroke {
+    -webkit-text-stroke: 1px rgba(0,0,0,0.6);
+    paint-order: stroke fill;
+  }
+  /* Space font */
+  .font-space {
+    font-family: var(--font-space), sans-serif;
+  }
+
+  /* Datatype font (IMPORTANT FIX) */
+  .font-datatype {
+    font-family: 'Datatype', sans-serif;
+  }
+
+    .font-geist {
+    font-family: var(--font-geist), sans-serif;
+  }
+    .font-jetbrains {
+    font-family: "JetBrains Mono", monospace;
+  }
+    .font-medula{
+         font-family: var(--font-medula-one);
+    }
+}
+/* HTML: <div class="loader"></div> */
+::-webkit-scrollbar {
+  display: none;
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 250s linear infinite;
+}
+.ticker-track2 {
+  display: flex;
+  width: max-content;
+  animation: ticker2 250s linear infinite;
+}
+.ticker-group {
+
+   flex-shrink: 0;
+  white-space: nowrap;
+
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes ticker2 {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
