@@ -263,7 +263,7 @@ export default function Home() {
           ease: "easeOut",
         }}
         style={{ y }}
-        className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-[9999] pointer-events-none"
+        className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"
       />
       <div style={{ backgroundColor: bgColor }} className="fixed inset-0 -z-10 ">
         <MovingGrid color={gridColor} opacity={gridOpacity} radius={220} speed={0.5} />
