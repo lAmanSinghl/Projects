@@ -1,5 +1,5 @@
 "use client";
-import { motion, useScroll, useTransform, useSpring, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
+import { motion, useScroll, useTransform, useSpring,useMotionValue, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 import MovingGrid from "@/components/MovingGrid";
 import Signature from "@/components/Signature";
@@ -13,10 +13,10 @@ export default function Home() {
   const heroRef = useRef(null);
   const horizontalRef = useRef(null);
   const skillsRef = useRef(null);
-
-  const [gridColor, setGridColor] = useState("210, 255, 0");
-  const [gridOpacity, setGridOpacity] = useState(0.15);
-  const [bgColor, setBgColor] = useState("#282C20");
+const gridColor = useMotionValue("210, 255, 0");
+const gridOpacity = useMotionValue(0.15);
+const bgColor = useMotionValue("#282C20");
+const bgOverlayOpacity = useMotionValue(0);
   const { scrollYProgress: MainScrool } = useScroll();
   const [scrolling, setScrolling] = useState(false);
   useEffect(() => {
@@ -181,31 +181,23 @@ export default function Home() {
   function lerp(start, end, t) {
     return Math.round(start + (end - start) * t);
   }
-  useMotionValueEvent(horizontalProgress, "change", (latest) => {
-    // 10% → 40%
+useMotionValueEvent(horizontalProgress, "change", (latest) => {
+
     const rawT = Math.min(
-      Math.max((latest - 0.3) / 0.5, 0),
-      1
+        Math.max((latest - 0.3) / 0.5, 0),
+        1
     );
 
     const t = rawT * rawT * (3 - 2 * rawT);
 
-    // GRID COLOR
     const r = Math.round(210 * (1 - t));
     const g = Math.round(255 * (1 - t));
 
-    setGridColor(`${r}, ${g}, 0`);
+    gridColor.set(`${r}, ${g}, 0`);
+    gridOpacity.set(0.15 - t * 0.07);
 
-    // GRID OPACITY
-    setGridOpacity(0.15 - t * 0.07);
-
-    // BACKGROUND
-    const bgR = lerp(40, 253, t);
-    const bgG = lerp(44, 250, t);
-    const bgB = lerp(32, 247, t);
-
-    setBgColor(`rgb(${bgR}, ${bgG}, ${bgB})`);
-  });
+bgOverlayOpacity.set(t);
+});
   return (
     <>
 
@@ -223,9 +215,19 @@ export default function Home() {
         style={{ y }}
         className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"
       />
-      <div style={{ backgroundColor: bgColor }} className="fixed inset-0 -z-10 ">
-        <MovingGrid color={gridColor} opacity={gridOpacity} radius={220} speed={0.5} />
-      </div>
+<div className="fixed inset-0 -z-10 bg-[#282C20]">
+  <motion.div
+    style={{ opacity: bgOverlayOpacity }}
+    className="absolute inset-0 bg-[#fdfaf7]"
+  />
+
+  <MovingGrid
+    color={gridColor}
+    opacity={gridOpacity}
+    radius={220}
+    speed={0.5}
+  />
+</div>
       <section ref={heroRef} className="relative h-[250vh] ">
 
         <div className="sticky top-0 h-screen overflow-hidden ">

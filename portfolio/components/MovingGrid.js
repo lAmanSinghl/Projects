@@ -2,22 +2,67 @@
 
 import { useEffect, useRef } from "react";
 
-export default function MovingGrid({ color = "0, 0, 0", opacity, size = 50, speed = 0.3, radius = 180, interactive = true, }) {
+export default function MovingGrid({
+  color = "0, 0, 0",
+  opacity,
+  size = 50,
+  speed = 0.3,
+  radius = 180,
+  interactive = true,
+}) {
   const canvasRef = useRef(null);
   const mouse = useRef({ x: -1000, y: -1000 });
-  const colorRef = useRef(color);
-  const opacityRef = useRef(opacity);
+const colorRef = useRef(
+  typeof color === "string" ? color : color.get()
+);
+
+const opacityRef = useRef(
+  typeof opacity === "number" ? opacity : opacity.get()
+);
   const interactiveRef = useRef(interactive);
-  useEffect(() => {
-    colorRef.current = color;
-  }, [color]);
 
-  useEffect(() => {
-    opacityRef.current = opacity;
-  }, [opacity]);
+useEffect(() => {
+  colorRef.current = typeof color === "string" ? color : color.get();
+}, [color]);
 
+useEffect(() => {
+  opacityRef.current = typeof opacity === "number" ? opacity : opacity.get();
+}, [opacity]);
   useEffect(() => {
     interactiveRef.current = interactive;
+  }, [interactive]);
+
+  // Handle mouse interaction separately so the listener
+  // always matches the current interactive prop.
+  useEffect(() => {
+    if (!interactive) {
+      mouse.current.x = -1000;
+      mouse.current.y = -1000;
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleMouseMove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+
+      mouse.current.x = e.clientX - rect.left;
+      mouse.current.y = e.clientY - rect.top;
+    };
+
+    const handleMouseLeave = () => {
+      mouse.current.x = -1000;
+      mouse.current.y = -1000;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+    };
   }, [interactive]);
 
   useEffect(() => {
@@ -25,16 +70,19 @@ export default function MovingGrid({ color = "0, 0, 0", opacity, size = 50, spee
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     let width = 0;
     let height = 0;
     let animationFrame;
     let offset = 0;
+    let isVisible = true;
 
-    const intensityMap = new Map();
+    const verticalIntensity = [];
+const horizontalIntensity = [];
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       width = canvas.offsetWidth;
       height = canvas.offsetHeight;
@@ -50,108 +98,114 @@ export default function MovingGrid({ color = "0, 0, 0", opacity, size = 50, spee
 
     const handleResize = () => resize();
 
-    const handleMouseMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-
-      mouse.current.x = e.clientX - rect.left;
-      mouse.current.y = e.clientY - rect.top;
-    };
-
-    const handleMouseLeave = () => {
-      mouse.current.x = -1000;
-      mouse.current.y = -1000;
-    };
-
     window.addEventListener("resize", handleResize);
 
-    if (interactiveRef.current) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseleave", handleMouseLeave);
-    } else {
-      mouse.current.x = -1000;
-      mouse.current.y = -1000;
-      intensityMap.clear();
-    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
 
+        if (isVisible && !animationFrame) {
+          animationFrame = requestAnimationFrame(draw);
+        }
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(canvas);
 
     const draw = () => {
+      animationFrame = null;
+
+      if (!isVisible) return;
+
       ctx.clearRect(0, 0, width, height);
 
       offset += speed;
-      const [r, g, b] = colorRef.current.split(",").map(Number);
 
-      const currentOpacity = opacityRef.current;
+const currentColor =
+  typeof color === "string" ? color : color.get();
+
+const currentOpacity =
+  typeof opacity === "number" ? opacity : opacity.get();
+
+const [r, g, b] = currentColor.split(",").map(Number);
+
       // Vertical lines
-      for (let x = -size; x <= width + size; x += size) {
-        const lineX = x + (offset % size);
-        const key = `v-${x}`;
+// Vertical lines
+let verticalIndex = 0;
 
-        const dist = interactiveRef.current
-          ? Math.abs(mouse.current.x - lineX)
-          : Infinity;
+for (let x = -size; x <= width + size; x += size) {
+  const lineX = x + (offset % size);
 
-        let intensity = intensityMap.get(key) || 0;
+  const dist = interactiveRef.current
+    ? Math.abs(mouse.current.x - lineX)
+    : Infinity;
 
-        if (dist < radius) {
-          intensity = Math.max(intensity, 1 - dist / radius);
-        }
+  let intensity = verticalIntensity[verticalIndex] || 0;
 
-        intensity *= 0.96;
+  if (dist < radius) {
+    intensity = Math.max(intensity, 1 - dist / radius);
+  }
 
-        intensityMap.set(key, intensity);
+  intensity *= 0.96;
+  verticalIntensity[verticalIndex] = intensity;
 
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${currentOpacity + intensity * 0.24
-          })`;
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${
+    currentOpacity + intensity * 0.24
+  })`;
 
-        ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(lineX, 0);
+  ctx.lineTo(lineX, height);
+  ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(lineX, 0);
-        ctx.lineTo(lineX, height);
-        ctx.stroke();
-      }
+  verticalIndex++;
+}
 
       // Horizontal lines
-      for (let y = -size; y <= height + size; y += size) {
-        const lineY = y + (offset % size);
-        const key = `h-${y}`;
+// Horizontal lines
+let horizontalIndex = 0;
 
-        const dist = interactiveRef.current
-          ? Math.abs(mouse.current.y - lineY)
-          : Infinity;
+for (let y = -size; y <= height + size; y += size) {
+  const lineY = y + (offset % size);
 
-        let intensity = intensityMap.get(key) || 0;
+  const dist = interactiveRef.current
+    ? Math.abs(mouse.current.y - lineY)
+    : Infinity;
 
-        if (dist < radius) {
-          intensity = Math.max(intensity, 1 - dist / radius);
-        }
+  let intensity = horizontalIntensity[horizontalIndex] || 0;
 
-        intensity *= 0.85;
+  if (dist < radius) {
+    intensity = Math.max(intensity, 1 - dist / radius);
+  }
 
-        intensityMap.set(key, intensity);
+  intensity *= 0.85;
+  horizontalIntensity[horizontalIndex] = intensity;
 
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${currentOpacity + intensity * 0.24
-          })`;
+  ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${
+    currentOpacity + intensity * 0.24
+  })`;
 
-        ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, lineY);
+  ctx.lineTo(width, lineY);
+  ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(0, lineY);
-        ctx.lineTo(width, lineY);
-        ctx.stroke();
-      }
+  horizontalIndex++;
+}
 
       animationFrame = requestAnimationFrame(draw);
     };
 
-    draw();
+    animationFrame = requestAnimationFrame(draw);
 
     return () => {
-      cancelAnimationFrame(animationFrame);
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
 
+      observer.disconnect();
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [size, speed, radius]);
 
