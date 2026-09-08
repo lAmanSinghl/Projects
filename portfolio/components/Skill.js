@@ -1,5 +1,5 @@
 import * as React from "react"
-import { motion, useTransform } from "motion/react"
+import { motion } from "motion/react"
 const SvgComponent = ({ isInView, ...props }) => {
 
   return (<svg

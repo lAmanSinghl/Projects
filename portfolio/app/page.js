@@ -1,8 +1,6 @@
 "use client";
-import Image from "next/image";
-import { animate, motion, useScroll, useTransform, useSpring, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
+import { motion, useScroll, useTransform, useSpring, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
 import { useRef, useState, useEffect } from "react";
-import FlipText from "@/components/FlipText";
 import MovingGrid from "@/components/MovingGrid";
 import Signature from "@/components/Signature";
 import Skill from "@/components/Skill.js";
@@ -21,8 +19,6 @@ export default function Home() {
   const [bgColor, setBgColor] = useState("#282C20");
   const { scrollYProgress: MainScrool } = useScroll();
   const [scrolling, setScrolling] = useState(false);
-  const [activeSkill, setActiveSkill] = useState(null);
-  // null | "design" | "develop"
   useEffect(() => {
     let timeout;
 
@@ -49,11 +45,6 @@ export default function Home() {
     [0, 1],
     ["20vh", "85vh"]
   );
-  const opacity = useSpring(scrolling ? 1 : 0, {
-    stiffness: 200,
-    damping: 25,
-  });
-
 
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -71,16 +62,7 @@ export default function Home() {
     target: skillsRef,
     offset: ["start start", "end end"],
   });
-  const x = useTransform(
-    horizontalProgress,
-    [0, 0.65],
-    ["0%", "-300%"]
-  );
-  const sectionBg = useTransform(
-    horizontalProgress,
-    [0, 0.45, 1],
-    ["#282C20", "#282C20", "#FDFAF7"]
-  );
+
   const leftX = useTransform(
     skillsProgress,
     [0, 0.55],
@@ -90,11 +72,6 @@ export default function Home() {
     skillsProgress,
     [0, 0.35],
     ["0%", "12%"]
-  );
-  const TopX = useTransform(
-    skillsProgress,
-    [0, 0.29],
-    ["0%", "-120%"]
   );
 
   const rightX = useTransform(
@@ -200,25 +177,6 @@ export default function Home() {
     [1, 0.25]
   );
   const imageFilter = useMotionTemplate`saturate(${saturation})`;
-
-  const bgColor3 = useTransform(
-    horizontalProgress,
-    [0, 1],
-    ["#282C20", "#FDFBF7"]
-  );
-
-  const gridColor3 = useTransform(
-    horizontalProgress,
-    [0, 1],
-    ["210,255,0", "120,120,120"]
-  );
-
-  const gridOpacity3 = useTransform(
-    horizontalProgress,
-    [0, 1],
-    [0.15, 0.08]
-  );
-
 
   function lerp(start, end, t) {
     return Math.round(start + (end - start) * t);

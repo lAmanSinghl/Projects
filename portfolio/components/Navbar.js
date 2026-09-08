@@ -7,20 +7,11 @@ import Burger from '@animated-burgers/burger-squeeze'
 const Navbar = ({
     textColor = "text-black",
     activeTextColor = "text-white",
-    burgerColor = "#000",
     borders = false,
     start = false,
 }) => {
-    const [showGrid, setShowGrid] = useState(false);
     const [clicked, setclicked] = useState(false);
     const [hovered, setHovered] = useState(false);
-    useEffect(() => {
-        first
-
-        return () => {
-            console.log(start)
-        }
-    }, [start])
 
     const handleToggle = () => {
         if (!clicked) {
