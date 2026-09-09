@@ -1,7 +1,7 @@
 "use client";
-import { motion, useScroll, useTransform, useSpring,useMotionValue, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, useMotionValueEvent, useMotionTemplate, useInView } from "motion/react";
 import { useRef, useState, useEffect } from "react";
-import MovingGrid from "@/components/MovingGrid";
+import Topography from "@/components/Topography";
 import Signature from "@/components/Signature";
 import Skill from "@/components/Skill.js";
 import Project from "@/components/Project.js"
@@ -13,10 +13,10 @@ export default function Home() {
   const heroRef = useRef(null);
   const horizontalRef = useRef(null);
   const skillsRef = useRef(null);
-const gridColor = useMotionValue("210, 255, 0");
-const gridOpacity = useMotionValue(0.15);
-const bgColor = useMotionValue("#282C20");
-const bgOverlayOpacity = useMotionValue(0);
+  const gridColor = useMotionValue("210, 255, 0");
+  const gridOpacity = useMotionValue(0.15);
+  const topographyColor = useMotionValue("#D2FF00");
+  const bgOverlayOpacity = useMotionValue(0);
   const { scrollYProgress: MainScrool } = useScroll();
   const [scrolling, setScrolling] = useState(false);
   useEffect(() => {
@@ -45,7 +45,7 @@ const bgOverlayOpacity = useMotionValue(0);
     [0, 1],
     ["20vh", "85vh"]
   );
-
+  
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end end"],
@@ -171,6 +171,11 @@ const bgOverlayOpacity = useMotionValue(0);
     stiffness: 120,
     damping: 22,
   });
+  const topographyOpacity = useTransform(
+  smoothScale,
+  [1, 0.8],
+  [0.15, 0]
+);
   const saturation = useTransform(
     scrollYProgress,
     [0, 0.6],
@@ -178,14 +183,10 @@ const bgOverlayOpacity = useMotionValue(0);
   );
   const imageFilter = useMotionTemplate`saturate(${saturation})`;
 
-  function lerp(start, end, t) {
-    return Math.round(start + (end - start) * t);
-  }
-useMotionValueEvent(horizontalProgress, "change", (latest) => {
-
+  const updateTopographyColor = (latest) => {
     const rawT = Math.min(
-        Math.max((latest - 0.3) / 0.5, 0),
-        1
+      Math.max((latest - 0.3) / 0.5, 0),
+      1
     );
 
     const t = rawT * rawT * (3 - 2 * rawT);
@@ -194,10 +195,20 @@ useMotionValueEvent(horizontalProgress, "change", (latest) => {
     const g = Math.round(255 * (1 - t));
 
     gridColor.set(`${r}, ${g}, 0`);
-    gridOpacity.set(0.15 - t * 0.07);
 
-bgOverlayOpacity.set(t);
-});
+    topographyColor.set(
+      `#${r.toString(16).padStart(2, "0")}${g
+        .toString(16)
+        .padStart(2, "0")}00`
+    );
+
+    gridOpacity.set(0.15 - t * 0.07);
+    bgOverlayOpacity.set(t);
+  };
+
+  useMotionValueEvent(horizontalProgress, "change", updateTopographyColor);
+  updateTopographyColor(horizontalProgress.get());
+
   return (
     <>
 
@@ -215,19 +226,34 @@ bgOverlayOpacity.set(t);
         style={{ y }}
         className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"
       />
-<div className="fixed inset-0 -z-10 bg-[#282C20]">
-  <motion.div
-    style={{ opacity: bgOverlayOpacity }}
-    className="absolute inset-0 bg-[#fdfaf7]"
-  />
+      <div className="fixed inset-0 -z-10 bg-[#282C20]">
+        <motion.div
+          style={{ opacity: bgOverlayOpacity }}
+          className="absolute inset-0 bg-[#fdfaf7]"
+        />
 
-  <MovingGrid
-    color={gridColor}
-    opacity={gridOpacity}
-    radius={220}
-    speed={0.5}
-  />
-</div>
+        <Topography
+          color={topographyColor}
+          lowColor="#D2FF00"
+          midColor="#D2FF00"
+          highColor="#D2FF00"
+          speed={0.25}
+          morphAmount={3}
+          morphSpeed={0.05}
+          bands={3}
+          thickness={0.04}
+          scale={2}
+          pixelSize={1}
+          glow={0}
+          colorMode="uniform"
+          contrast={3}
+          brightness={1}
+          fillBands={false}
+          opacity={0.15}
+          grain={false}
+          mouseInteraction={false}
+        />
+      </div>
       <section ref={heroRef} className="relative h-[250vh] ">
 
         <div className="sticky top-0 h-screen overflow-hidden ">
@@ -260,7 +286,28 @@ bgOverlayOpacity.set(t);
 
           <motion.div style={{ scale: smoothScale, borderRadius, transformOrigin: "center center", backgroundColor: bgColor2 }} className=" h-screen overflow-hidden bg-[] flex justify-center">
 
-            <MovingGrid color="0,0,0" opacity={gridOpacity2.get()} interactive={gridInteractive} />
+            <div className="absolute inset-0 pointer-events-none">
+              <Topography
+                lowColor="#000000"
+                midColor="#000000"
+                highColor="#000000"
+                speed={0.25}
+                morphAmount={3}
+                morphSpeed={0.05}
+                bands={3}
+                thickness={0.04}
+                scale={2}
+                pixelSize={1}
+                glow={0}
+                colorMode="uniform"
+                contrast={3}
+                brightness={1}
+                fillBands={false}
+                opacity={0.15}
+                grain={false}
+                mouseInteraction={false}
+              />
+            </div>
 
             <div className="flex items-center mt-31 w-[80%] justify-center font-datatype ">
               <motion.img style={{ filter: imageFilter }} className="relative -top-[488.8px] right-6 w-330 pointer-events-none" src="PhotoshopPreview_Image.png" alt="" />
@@ -418,27 +465,27 @@ bgOverlayOpacity.set(t);
                 </div>
 
                 <div className="text-lg font-datatype w-80 font-bold text-right relative left-120 leading-5 ">
-                  
-                   <RevealText color="#282C20" className="leading-none mb-1"> <span className="">Creating engaging, responsive, and </span> </RevealText>
-                     <RevealText color="#282C20" className="leading-none"> <span>interactive user experiences</span></RevealText>
-                 
-                  </div>
+
+                  <RevealText color="#282C20" className="leading-none mb-1"> <span className="">Creating engaging, responsive, and </span> </RevealText>
+                  <RevealText color="#282C20" className="leading-none"> <span>interactive user experiences</span></RevealText>
+
+                </div>
                 <div className="left-189 relative rounded-md h-11 w-11 flex items-center justify-center bg-[#D2FF00] mt-1">
                   <lord-icon src="https://cdn.lordicon.com/dcyiaoek.json" trigger="hover" colors="primary:#292d20" style={{ width: 15 }}></lord-icon></div>
               </motion.div>
 
               <motion.div style={{ x: rightTX }} className=" font-medula text-[110px]   font-bold w-200 ">
                 <div className="w-fit  mb-9">
-                  <RevealText color="#282C20" className="leading-none" direction = "right">
+                  <RevealText color="#282C20" className="leading-none" direction="right">
                     <span className="">Develop</span>
                   </RevealText>
                 </div>
                 <div className="text-lg font-datatype w-80 font-bold  relative leading-5 ">
-                  
-                   <RevealText color="#282C20" className="leading-none mb-1" direction="right"> <span className="">Building scalable, reliable, and</span> </RevealText>
-                     <RevealText color="#282C20" className="leading-none" direction="right"> <span>performant applications.</span></RevealText>
-                 
-                  </div>
+
+                  <RevealText color="#282C20" className="leading-none mb-1" direction="right"> <span className="">Building scalable, reliable, and</span> </RevealText>
+                  <RevealText color="#282C20" className="leading-none" direction="right"> <span>performant applications.</span></RevealText>
+
+                </div>
                 <div className="text-lg font-datatype w-80 font-bold leading-5  "> </div>
                 <div className="relative rounded-md h-11 w-11 flex items-center justify-center bg-[#D2FF00]  mt-1">
                   <lord-icon src="https://cdn.lordicon.com/dcyiaoek.json" trigger="hover" colors="primary:#292d20" style={{ width: 15, transform: "rotate(180deg)" }}></lord-icon>

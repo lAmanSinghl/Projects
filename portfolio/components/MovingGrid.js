@@ -44,12 +44,10 @@ useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const handleMouseMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-
-      mouse.current.x = e.clientX - rect.left;
-      mouse.current.y = e.clientY - rect.top;
-    };
+const handleMouseMove = (e) => {
+  mouse.current.x = e.clientX;
+  mouse.current.y = e.clientY;
+};
 
     const handleMouseLeave = () => {
       mouse.current.x = -1000;
