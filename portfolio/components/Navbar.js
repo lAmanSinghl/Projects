@@ -3,16 +3,29 @@ import Topography from "./Topography";
 import FlipText from "./FlipText";
 import { motion } from "motion/react";
 import Burger from '@animated-burgers/burger-squeeze'
-
-const Navbar = ({
-    textColor = "text-black",
-    activeTextColor = "text-white",
-    borders = false,
-    start = false,
-}) => {
+import { useNavbar } from "@/components/NavbarContext";
+const Navbar = () => {
     const [clicked, setclicked] = useState(false);
     const [hovered, setHovered] = useState(false);
+    const activeTextColor = "text-white";
+    const { navbarTheme, start } = useNavbar();
 
+const navbarThemes = {
+    hero: {
+        textColor: "text-black",
+        borders: false,
+    },
+    dark: {
+        textColor: "text-black",
+        borders: false,
+    },
+    light: {
+        textColor: "text-[#fdfaf7]",
+        borders: true,
+    },
+};
+
+const { textColor, borders } = navbarThemes[navbarTheme];
     const handleToggle = () => {
         if (!clicked) {
             setclicked(true);
