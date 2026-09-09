@@ -13,11 +13,9 @@ export default function Home() {
   const heroRef = useRef(null);
   const horizontalRef = useRef(null);
   const skillsRef = useRef(null);
-  const gridColor = useMotionValue("210, 255, 0");
-  const gridOpacity = useMotionValue(0.15);
   const topographyColor = useMotionValue("#D2FF00");
   const bgOverlayOpacity = useMotionValue(0);
-  const { scrollYProgress: MainScrool } = useScroll();
+  const { scrollYProgress: mainScroll } = useScroll();
   const [scrolling, setScrolling] = useState(false);
   useEffect(() => {
     let timeout;
@@ -41,7 +39,7 @@ export default function Home() {
   }, []);
 
   const y = useTransform(
-    MainScrool,
+    mainScroll,
     [0, 1],
     ["20vh", "85vh"]
   );
@@ -84,17 +82,15 @@ export default function Home() {
     [0, 0.35],
     ["0%", "-12%"]
   );
-  const [start, setstart] = useState("flase")
+  const [start, setstart] = useState(false)
   const [navbarTheme, setNavbarTheme] = useState("hero");
   const navbarThemes = {
     dark: {
-      burgerColor: "",
       textColor: "text-black",
       borders: false,
     },
 
     light: {
-      burgerColor: "bg-[#fdfaf7]",
       textColor: "text-[#fdfaf7]",
       borders: true,
     },
@@ -135,13 +131,10 @@ export default function Home() {
     once: true,
     amount: 0.2,
   });
-  const [gridInteractive, setGridInteractive] = useState(true);
   const p1 = useTransform(scrollYProgress, [0.15, 0.32], [0, 1]);
 
   const p2 = useTransform(scrollYProgress, [0.32, 0.54], [0, 1]);
-  useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    setGridInteractive(latest < 0.1);
-  });
+
   const coverY = useTransform(
     skillsStickyProgress,
     [0.07, 0.99],
@@ -151,11 +144,6 @@ export default function Home() {
     scrollYProgress,
     [0, 0.6],
     ["#fdfaf7", "#5A5D53"]
-  );
-  const gridOpacity2 = useTransform(
-    scrollYProgress,
-    [0, 0.6],
-    [0.08, 0.01]
   );
   const scale = useTransform(
     scrollYProgress,
@@ -171,11 +159,7 @@ export default function Home() {
     stiffness: 120,
     damping: 22,
   });
-  const topographyOpacity = useTransform(
-  smoothScale,
-  [1, 0.8],
-  [0.15, 0]
-);
+
   const saturation = useTransform(
     scrollYProgress,
     [0, 0.6],
@@ -194,7 +178,7 @@ export default function Home() {
     const r = Math.round(210 * (1 - t));
     const g = Math.round(255 * (1 - t));
 
-    gridColor.set(`${r}, ${g}, 0`);
+
 
     topographyColor.set(
       `#${r.toString(16).padStart(2, "0")}${g
@@ -202,7 +186,6 @@ export default function Home() {
         .padStart(2, "0")}00`
     );
 
-    gridOpacity.set(0.15 - t * 0.07);
     bgOverlayOpacity.set(t);
   };
 
@@ -257,7 +240,7 @@ export default function Home() {
       <section ref={heroRef} className="relative h-[250vh] ">
 
         <div className="sticky top-0 h-screen overflow-hidden ">
-          <div className="absolute z-10 flex justify-center items-center left-60 overflow-hidden w-300 top-39">
+          <div className="absolute z-10 flex justify-center items-center left-60 overflow-hidden w-300 top-46">
             <Signature p1={p1} p2={p2} className=" w-150  scale-170  " />
           </div>
           <div className="absolute inset-0 -z-10 pointer-events-none text-8xl flex flex-col justify-center items-center ">

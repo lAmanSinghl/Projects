@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState} from "react";
 import Topography from "./Topography";
 import FlipText from "./FlipText";
 import { motion } from "motion/react";
@@ -16,29 +16,10 @@ const Navbar = ({
     const handleToggle = () => {
         if (!clicked) {
             setclicked(true);
-
-
         } else {
-
-
             setclicked(false);
-
         }
     };
-    // Navbar ka scrool band karne ke liye
-    // useEffect(() => {
-    //     if (clicked) {
-    //         document.body.style.overflow = "hidden";
-    //     } else {
-    //         document.body.style.overflow = "auto";
-    //     }
-
-    //     return () => {
-    //         document.body.style.overflow = "auto";
-    //     };
-    // }, [clicked]);
-
-
 
     return (
         <>
@@ -83,7 +64,7 @@ const Navbar = ({
 
                     <div className={`group/card flex justify-center items-center relative left-4.25 top-px group overflow-hidden rounded-xl w-[98%] h-[97%] ${clicked ? "bg-[#F4F4ED]" : ""} cursor-pointer  transition-all ease-in-out duration-900 group `} onClick={handleToggle}>
 
-                        <div className={`absolute  flex justify-center items-center group overflow-hidden cursor-pointer   transition-all ease-in border-4 m-0 rounded-xl   ${start ? "w-[60.572945999px] h-[60.4px]" : "w-[56px] h-[56px]"} ${hovered ? "border-[#D2FF00]" : ""}  ${clicked ? "-z-10" : "border-black  duration-600 z-10"}  fixed `} >
+                        <div className={`absolute  flex justify-center items-center group overflow-hidden cursor-pointer   transition-all ease-in border-4 m-0 rounded-xl   ${start ? "w-[60.572945999px] h-[60.4px]" : "w-14 h-14"} ${hovered ? "border-[#D2FF00]" : ""}  ${clicked ? "-z-10" : "border-black  duration-600 z-10"}  fixed `} >
                             <div className={`cursor-pointer m-2 absolute  w-20 h-40 rounded-full ${hovered ? "translate-y-0" : "-translate-y-full"}   group-hover/card:translate-y-0 transition-all ease-in-out duration-900 delay-100 z-9 ${borders ? "opacity-0" : "opacity-100"} bg-[#D2FF00] group`} />
 
                             <div className={`m-1 absolute  w-20 h-40 rounded-full -translate-y-full  group-hover/card:translate-y-0 transition-all ease-in-out duration-900 delay-100 z-18 ${borders ? "opacity-100" : "opacity-0"} bg-[#D2FF00] group cursor-pointercursor-pointer`} />
