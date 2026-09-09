@@ -9,7 +9,7 @@ const SvgComponent = (props) => (
   >
     <path
       fill="none"
-      stroke="#b2c73a"
+      stroke="#D2FF00"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={3.8}
@@ -17,7 +17,7 @@ const SvgComponent = (props) => (
     />
     <path
       fill="none"
-      stroke="#b2c83d"
+      stroke="#D2FF00"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={3.8}
@@ -25,7 +25,7 @@ const SvgComponent = (props) => (
     />
     <path
       fill="none"
-      stroke="#b3c73b"
+      stroke="#D2FF00"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={3.8}
@@ -33,7 +33,7 @@ const SvgComponent = (props) => (
     />
     <path
       fill="none"
-      stroke="#b3c63a"
+      stroke="#D2FF00"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={3.8}

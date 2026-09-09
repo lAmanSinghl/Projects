@@ -1,5 +1,5 @@
 "use client";
-import { motion, useScroll, useTransform, useMotionValue, useMotionValueEvent, useInView } from "motion/react";
+import { motion, useScroll, useTransform, useMotionValue, useMotionValueEvent} from "motion/react";
 import { useRef, useState, useEffect } from "react";
 import Topography from "@/components/Topography";
 import Navbar from "@/components/Navbar";
@@ -53,36 +53,12 @@ function HomeContent() {
     target: horizontalRef,
     offset: ["start end", "end start"],
   });
+
   const { scrollYProgress: skillsProgress } = useScroll({
     target: skillsRef,
     offset: ["start end", "end start"],
   });
-  const { scrollYProgress: skillsStickyProgress } = useScroll({
-    target: skillsRef,
-    offset: ["start start", "end end"],
-  });
 
-  const leftX = useTransform(
-    skillsProgress,
-    [0, 0.55],
-    ["0%", "20%"]
-  );
-  const leftTX = useTransform(
-    skillsProgress,
-    [0, 0.35],
-    ["0%", "12%"]
-  );
-
-  const rightX = useTransform(
-    skillsProgress,
-    [0, 0.55],
-    ["0%", "-19%"]
-  );
-  const rightTX = useTransform(
-    skillsProgress,
-    [0, 0.35],
-    ["0%", "-12%"]
-  );
   const { setNavbarTheme, setStart } = useNavbar();
 
   useEffect(() => {
@@ -120,16 +96,6 @@ function HomeContent() {
     };
   }, [scrollYProgress, horizontalProgress, skillsProgress]);
 
-  const isInView = useInView(skillsRef, {
-    once: true,
-    amount: 0.2,
-  });
-
-  const coverY = useTransform(
-    skillsStickyProgress,
-    [0.07, 0.99],
-    ["100%", "0%"]
-  );
 
   const updateTopographyColor = (latest) => {
     const rawT = Math.min(
@@ -161,25 +127,11 @@ function HomeContent() {
 
       <Navbar />
 
-      <motion.div
-        animate={{
-          opacity: scrolling ? 1 : 0,
-        }}
-        transition={{
-          duration: 0.5,
-          ease: "easeOut",
-        }}
-        style={{ y }}
-        className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"
-      />
-      <div className="fixed inset-0 -z-10 bg-[#282C20]">
-        <motion.div
-          style={{ opacity: bgOverlayOpacity }}
-          className="absolute inset-0 bg-[#fdfaf7]"
-        />
+      <motion.div animate={{opacity: scrolling ? 1 : 0,}} transition={{duration: 0.5,ease: "easeOut",}} style={{ y }}className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"/>
 
-        <Topography
-          color={topographyColor}
+      <div className="fixed inset-0 -z-10 bg-[#282C20]">
+        <motion.div style={{ opacity: bgOverlayOpacity }} className="absolute inset-0 bg-[#fdfaf7]"/>
+        <Topography color={topographyColor}
           lowColor="#D2FF00"
           midColor="#D2FF00"
           highColor="#D2FF00"
@@ -197,38 +149,25 @@ function HomeContent() {
           fillBands={false}
           opacity={0.15}
           grain={false}
-          mouseInteraction={false}
-        />
+          mouseInteraction={false}/>
       </div>
 
-      <HeroSection
-        heroRef={heroRef}
-        scrollYProgress={scrollYProgress}
-      />
+      <HeroSection heroRef={heroRef} />
 
       <IntroSection />
 
       <JourneySection
         horizontalRef={horizontalRef}
-        horizontalProgress={horizontalProgress}
       />
 
-      <SkillsSection
-        skillsRef={skillsRef}
-        leftX={leftX}
-        leftTX={leftTX}
-        rightX={rightX}
-        rightTX={rightTX}
-        coverY={coverY}
-        isInView={isInView}
-      />
+      <SkillsSection skillsRef={skillsRef} />
+
       <section className="h-screen"></section>
 
 
     </>
   );
 }
-
 
 export default function Home() {
   return (

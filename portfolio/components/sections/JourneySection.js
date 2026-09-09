@@ -1,20 +1,21 @@
 "use client";
 
-import { motion, useTransform } from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
 import HorizontalReveal from "@/components/HorizontalReveal";
 
-export default function JourneySection({
-  horizontalRef,
-  horizontalProgress,
-}) {
+export default function JourneySection({ horizontalRef }) {
+  const { scrollYProgress } = useScroll({
+    target: horizontalRef,
+    offset: ["start end", "end start"],
+  });
+
   return (
     <section ref={horizontalRef} className="relative h-[280vh]">
       <div className="sticky top-0 h-screen overflow-hidden">
-
         <motion.div
           style={{
             x: useTransform(
-              horizontalProgress,
+              scrollYProgress,
               [0, 0.75],
               ["0%", "-170%"]
             ),
@@ -33,7 +34,7 @@ export default function JourneySection({
 
             <div className="absolute text-[#B4B8A5] left-328 top-91 w-40 scale-70">
               <HorizontalReveal
-                progress={horizontalProgress}
+                progress={scrollYProgress}
                 color="#D5F831"
                 trigger={0.15}
               >
@@ -57,7 +58,7 @@ export default function JourneySection({
 
             <div className="absolute text-[#B4B8A5] left-412 top-171 w-35 scale-70">
               <HorizontalReveal
-                progress={horizontalProgress}
+                progress={scrollYProgress}
                 color="#D5F831"
                 trigger={0.15}
               >
@@ -76,7 +77,7 @@ export default function JourneySection({
 
               <div className="absolute bottom-123 -left-1 w-80">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.15}
                 >
@@ -88,7 +89,7 @@ export default function JourneySection({
 
               <div className="absolute -top-95">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.05}
                 >
@@ -100,7 +101,7 @@ export default function JourneySection({
 
               <div className="absolute -top-82 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.09}
                 >
@@ -115,7 +116,7 @@ export default function JourneySection({
 
               <div className="w-full flex absolute justify-between -top-41 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.09}
                 >
@@ -123,7 +124,7 @@ export default function JourneySection({
                 </HorizontalReveal>
 
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.09}
                 >
@@ -133,7 +134,7 @@ export default function JourneySection({
 
               <div className="w-full flex absolute justify-between -top-31 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.09}
                 >
@@ -141,7 +142,7 @@ export default function JourneySection({
                 </HorizontalReveal>
 
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.09}
                 >
@@ -163,7 +164,7 @@ export default function JourneySection({
 
             <div className="absolute text-[#4a4b48] left-635 top-82 w-42 scale-70">
               <HorizontalReveal
-                progress={horizontalProgress}
+                progress={scrollYProgress}
                 color="#D5F831"
                 trigger={0.45}
               >
@@ -183,7 +184,7 @@ export default function JourneySection({
 
             <div className="absolute text-[#4a4b48] left-717 top-169 w-42 scale-70">
               <HorizontalReveal
-                progress={horizontalProgress}
+                progress={scrollYProgress}
                 color="#D5F831"
                 trigger={0.45}
               >
@@ -202,7 +203,7 @@ export default function JourneySection({
 
               <div className="absolute bottom-110 -left-1 w-80 scale-y-70">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.51}
                 >
@@ -214,7 +215,7 @@ export default function JourneySection({
 
               <div className="absolute -top-78">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.51}
                 >
@@ -226,7 +227,7 @@ export default function JourneySection({
 
               <div className="absolute -top-65 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.49}
                 >
@@ -239,7 +240,7 @@ export default function JourneySection({
 
               <div className="w-full flex absolute justify-between -top-35 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.51}
                 >
@@ -247,7 +248,7 @@ export default function JourneySection({
                 </HorizontalReveal>
 
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.59}
                 >
@@ -257,7 +258,7 @@ export default function JourneySection({
 
               <div className="w-full flex absolute justify-between -top-28 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.51}
                 >
@@ -265,7 +266,7 @@ export default function JourneySection({
                 </HorizontalReveal>
 
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.59}
                 >
@@ -275,7 +276,7 @@ export default function JourneySection({
 
               <div className="w-full flex absolute justify-between -top-21 font-medula text-4xl">
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.51}
                 >
@@ -283,7 +284,7 @@ export default function JourneySection({
                 </HorizontalReveal>
 
                 <HorizontalReveal
-                  progress={horizontalProgress}
+                  progress={scrollYProgress}
                   color="#D5F831"
                   trigger={0.59}
                 >
@@ -306,7 +307,7 @@ export default function JourneySection({
 
             <div className="absolute top-47 left-921 w-60 scale-70 text-[#4a4b48]">
               <HorizontalReveal
-                progress={horizontalProgress}
+                progress={scrollYProgress}
                 color="#D5F831"
                 trigger={0.65}
               >

@@ -1,20 +1,57 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useScroll, useTransform, useInView } from "motion/react";
 import Skill from "@/components/Skill.js";
 import Project from "@/components/Project.js";
 import RevealText from "@/components/Reveal";
 import CardSwap, { Card } from "@/components/Cardswap";
 
-export default function SkillsSection({
-  skillsRef,
-  leftX,
-  leftTX,
-  rightX,
-  rightTX,
-  coverY,
-  isInView,
-}) {
+export default function SkillsSection({ skillsRef }) {
+    const { scrollYProgress: skillsProgress } = useScroll({
+    target: skillsRef,
+    offset: ["start end", "end start"],
+  });
+
+  const { scrollYProgress: skillsStickyProgress } = useScroll({
+    target: skillsRef,
+    offset: ["start start", "end end"],
+  });
+
+  const leftX = useTransform(
+    skillsProgress,
+    [0, 0.55],
+    ["0%", "20%"]
+  );
+
+  const leftTX = useTransform(
+    skillsProgress,
+    [0, 0.35],
+    ["0%", "12%"]
+  );
+
+  const rightX = useTransform(
+    skillsProgress,
+    [0, 0.55],
+    ["0%", "-19%"]
+  );
+
+  const rightTX = useTransform(
+    skillsProgress,
+    [0, 0.35],
+    ["0%", "-12%"]
+  );
+
+  const isInView = useInView(skillsRef, {
+    once: true,
+    amount: 0.2,
+  });
+
+  const coverY = useTransform(
+    skillsStickyProgress,
+    [0.07, 0.99],
+    ["100%", "0%"]
+  );
+  
   return (
     <section ref={skillsRef} className="relative h-[160vh]">
       <div className="sticky top-0 h-screen overflow-hidden ">
@@ -126,12 +163,12 @@ export default function SkillsSection({
           style={{ y: coverY }}
           className="absolute inset-0 bg-[#111112] z-9 overflow-hidden flex h-screen"
         >
-          <div className="font-medula text-6xl font-bold text-white flex justify-center items-center h-70 relative top-11 ">
+          <div className="font-medula text-6xl font-bold text-white flex justify-center items-center h-70 relative top-19 ">
             <div className="scale-250 absolute left-170 top-25">
               Project
             </div>
 
-            <div className="w-100 absolute left-215 top-20 rotate-3 scale-320 pointer-events-none">
+            <div className="w-100 absolute left-230 top-20 rotate-3 scale-370 pointer-events-none">
               <Project />
             </div>
           </div>
