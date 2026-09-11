@@ -114,7 +114,7 @@ export default function HeroSection({ heroRef }) {
             transformOrigin: "center center",
             backgroundColor: bgColor2,
           }}
-          className="h-screen overflow-hidden bg-[] flex justify-center"
+          className="h-screen overflow-hidden flex justify-center"
         >
 
           <div className="absolute inset-0 pointer-events-none">
@@ -143,8 +143,14 @@ export default function HeroSection({ heroRef }) {
           <div className="flex items-center mt-31 w-[80%] justify-center font-datatype ">
             <motion.img
               style={{ filter: imageFilter }}
-              className="relative -top-[488.8px] right-6 w-330 pointer-events-none"
-              src="PhotoshopPreview_Image.png"
+              className="absolute left-121 top-14 right-6 w-130 pointer-events-none"
+              src="Firefly4.png"
+              alt=""
+            />
+            <motion.img
+              style={{ filter: imageFilter }}
+              className="relative -top-[35.8px] right-6 w-130 pointer-events-none"
+              src="Firefly.png"
               alt=""
             />
           </div>

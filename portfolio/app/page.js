@@ -1,5 +1,5 @@
 "use client";
-import { motion, useScroll, useTransform, useMotionValue, useMotionValueEvent} from "motion/react";
+import { motion, useScroll, useTransform, useMotionValue, useMotionValueEvent } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 import Topography from "@/components/Topography";
 import Navbar from "@/components/Navbar";
@@ -8,11 +8,14 @@ import HeroSection from "@/components/sections/HeroSection";
 import { NavbarProvider, useNavbar } from "@/components/NavbarContext";
 import JourneySection from "@/components/sections/JourneySection";
 import SkillsSection from "@/components/sections/SkillsSection";
-
+import ProjectsSection from "@/components/sections/ProjectsSection";
+import ConclusionSection from "@/components/sections/ConclusionSection";
 function HomeContent() {
   const heroRef = useRef(null);
   const horizontalRef = useRef(null);
   const skillsRef = useRef(null);
+  const projectsRef = useRef(null);
+  const conclusionRef = useRef(null);
   const topographyColor = useMotionValue("#D2FF00");
   const bgOverlayOpacity = useMotionValue(0);
   const { scrollYProgress: mainScroll } = useScroll();
@@ -67,22 +70,31 @@ function HomeContent() {
       const horizontal = horizontalProgress.get();
       const skills = skillsProgress.get();
 
+      // HERO — only while we're right at the top
       if (hero < 0.02) {
         setNavbarTheme("dark");
         setStart(true);
-      } else {
-        setStart(false);
+        return;
+      }
 
-        if (horizontal < 0.4) {
-          setNavbarTheme("light");
-        } else if (skills < 0.6) {
-          setNavbarTheme("dark");
-        } else {
-          setNavbarTheme("light");
-        }
+      // Everything after the top uses the normal navbar
+      setStart(false);
+
+      // JOURNEY
+      if (horizontal < 0.4) {
+        setNavbarTheme("light");
+        return;
+      }
+
+      // AFTER JOURNEY → SKILLS
+      if (skills < 0.78) {
+        setNavbarTheme("dark");
+      } else {
+        setNavbarTheme("light");
       }
     };
 
+    // Set initial state immediately
     updateNavbar();
 
     const unsubHero = scrollYProgress.on("change", updateNavbar);
@@ -94,7 +106,11 @@ function HomeContent() {
       unsubHorizontal();
       unsubSkills();
     };
-  }, [scrollYProgress, horizontalProgress, skillsProgress]);
+  }, [
+    scrollYProgress,
+    horizontalProgress,
+    skillsProgress,
+  ]);
 
 
   const updateTopographyColor = (latest) => {
@@ -127,10 +143,10 @@ function HomeContent() {
 
       <Navbar />
 
-      <motion.div animate={{opacity: scrolling ? 1 : 0,}} transition={{duration: 0.5,ease: "easeOut",}} style={{ y }}className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none"/>
+      <motion.div animate={{ opacity: scrolling ? 1 : 0, }} transition={{ duration: 0.5, ease: "easeOut", }} style={{ y }} className="fixed right-0  h-13 w-1.5 rounded-full bg-white mix-blend-difference z-9999 pointer-events-none" />
 
       <div className="fixed inset-0 -z-10 bg-[#282C20]">
-        <motion.div style={{ opacity: bgOverlayOpacity }} className="absolute inset-0 bg-[#fdfaf7]"/>
+        <motion.div style={{ opacity: bgOverlayOpacity }} className="absolute inset-0 bg-[#fdfaf7]" />
         <Topography color={topographyColor}
           lowColor="#D2FF00"
           midColor="#D2FF00"
@@ -149,7 +165,7 @@ function HomeContent() {
           fillBands={false}
           opacity={0.15}
           grain={false}
-          mouseInteraction={false}/>
+          mouseInteraction={false} />
       </div>
 
       <HeroSection heroRef={heroRef} />
@@ -162,8 +178,9 @@ function HomeContent() {
 
       <SkillsSection skillsRef={skillsRef} />
 
-      <section className="h-screen"></section>
+<ProjectsSection projectsRef={projectsRef} />
 
+<ConclusionSection conclusionRef={conclusionRef} />
 
     </>
   );
