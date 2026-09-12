@@ -19,8 +19,9 @@ export default function JourneySection({ horizontalRef }) {
               [0, 0.75],
               ["0%", "-170%"]
             ),
+            willChange: "transform",
           }}
-          className="flex"
+          className="flex transform-gpu"
         >
           <section className="w-screen h-screen shrink-0 relative top-2">
 
@@ -47,10 +48,6 @@ export default function JourneySection({ horizontalRef }) {
             <div className=" absolute top-103 left-380 w-70 h-78 overflow-hidden rounded-xl scale-78">
               <img
                 src="Screenshot_2026-06-11-12-08-43-003_com.instagram.android-edit.jpg.jpeg"
-                style={{
-                  filter:
-                    "grayscale(150%) sepia(50%) brightness(0.6) contrast(0.95)",
-                }}
                 alt=""
                 className="absolute w-200 scale-130 -top-25 right-10 opacity-80"
               />
@@ -170,9 +167,6 @@ export default function JourneySection({ horizontalRef }) {
             <div className=" absolute top-14 left-634 w-70 h-78 overflow-hidden rounded-xl scale-78">
               <img
                 src="IMG_20250203_024609.jpg.jpeg"
-                style={{
-                  filter: "grayscale(100%) sepia(10%) brightness(1)",
-                }}
                 alt=""
                 className="absolute w-200 scale-130 -top-25 right-10 opacity-90"
               />
@@ -331,10 +325,6 @@ export default function JourneySection({ horizontalRef }) {
                 src="IMG_20250202_231904.jpg.jpeg"
                 alt=""
                 className="absolute w-200 scale-160 -top-36"
-                style={{
-                  filter:
-                    "grayscale(150%) sepia(10%) brightness(1)",
-                }}
               />
             </div>
 

@@ -23,8 +23,7 @@ export default function Reveal({
   });
 
   useEffect(() => {
-    if (isTriggered !== undefined) return;
-    if (!progress) return;
+    if (isTriggered !== undefined || !progress) return;
 
     if (progress.get() >= trigger) {
       setPlayed(true);
@@ -32,10 +31,10 @@ export default function Reveal({
     }
 
     const unsubscribe = progress.on("change", (latest) => {
-      if (latest < trigger) return;
-
-      setPlayed(true);
-      unsubscribe();
+      if (latest >= trigger) {
+        setPlayed(true);
+        unsubscribe();
+      }
     });
 
     return unsubscribe;
@@ -50,56 +49,15 @@ export default function Reveal({
 
   const isRight = direction === "right";
 
-  const duration = 1;
-
-  const animation =
-    direction === "right"
-      ? {
-          initial: {
-            x: "100%",
-            scaleX: 0,
-            transformOrigin: "right",
-          },
-
-          animate: {
-            x: ["100%", "0%", "-100%"],
-            scaleX: [0, 1, 0],
-            transformOrigin: ["right", "right", "left"],
-          },
-        }
-      : {
-          initial: {
-            x: "-100%",
-            scaleX: 0,
-            transformOrigin: "left",
-          },
-
-          animate: {
-            x: ["-100%", "0%", "100%"],
-            scaleX: [0, 1, 0],
-            transformOrigin: ["left", "left", "right"],
-          },
-        };
-
-  const exitAnimation =
-    direction === "right"
-      ? {
-          x: ["-100%", "0%"],
-          scaleX: [0, 1],
-          transformOrigin: ["left", "right"],
-        }
-      : {
-          x: ["100%", "0%"],
-          scaleX: [0, 1],
-          transformOrigin: ["right", "left"],
-        };
+  const initialX = isRight ? "100%" : "-100%";
+  const middleX = "0%";
+  const finalX = isRight ? "-100%" : "100%";
 
   return (
     <div
       ref={ref}
       className={`relative overflow-hidden ${className}`}
     >
-      {/* TEXT */}
       <motion.div
         initial={{
           opacity: 0,
@@ -116,44 +74,47 @@ export default function Reveal({
                   opacity: 1,
                   x: 0,
                 }
-              : {}
+              : undefined
         }
         transition={{
-          delay: exitTriggered
-            ? 0
-            : delay + duration * 0.5,
-
+          delay: exitTriggered ? 0 : delay + 0.5,
           duration: 0.3,
-
           ease: [0.22, 1, 0.36, 1],
         }}
+        style={{ willChange: "transform, opacity" }}
       >
         {children}
       </motion.div>
 
-      {/* REVEAL BLOCK */}
       <motion.div
         className="absolute inset-0 z-10"
         style={{
           backgroundColor: color,
           pointerEvents: "none",
           willChange: "transform",
+          transformOrigin: isRight ? "right" : "left",
         }}
-        initial={animation.initial}
+        initial={{
+          x: initialX,
+          scaleX: 0,
+        }}
         animate={
           exitTriggered
-            ? exitAnimation
+            ? {
+                x: isRight ? "-100%" : "100%",
+                scaleX: 0,
+              }
             : shouldPlay
-              ? animation.animate
-              : {}
+              ? {
+                  x: [initialX, middleX, finalX],
+                  scaleX: [0, 1, 0],
+                }
+              : undefined
         }
         transition={{
           delay: exitTriggered ? 0 : delay,
-
-          duration,
-
+          duration: 1,
           ease: "linear",
-
           times: [0, 0.5, 1],
         }}
       />

@@ -5,6 +5,7 @@ import {
   useScroll,
   useTransform,
 } from "motion/react";
+import Reveal from "@/components/Reveal";
 
 export default function ProjectsSection({ projectsRef }) {
   const { scrollYProgress } = useScroll({
@@ -13,8 +14,9 @@ export default function ProjectsSection({ projectsRef }) {
   });
 
   /*
+   * =====================================================
    * PROJECT 01
-   * Slower, more deliberate exit.
+   * =====================================================
    */
 
   const projectOneY = useTransform(
@@ -36,11 +38,10 @@ export default function ProjectsSection({ projectsRef }) {
   );
 
   /*
+   * =====================================================
    * PROJECT 02
-   *
-   * Clean single entrance.
-   * No stagger.
-   * Reaches the center and holds.
+   * Enter → hold
+   * =====================================================
    */
 
   const projectTwoY = useTransform(
@@ -62,22 +63,28 @@ export default function ProjectsSection({ projectsRef }) {
   );
 
   /*
+   * =====================================================
    * CURVED ENDING
+   * =====================================================
    *
-   * The curve gets deeper as the Projects section
-   * reaches its end.
+   * Starts very late and stays subtle.
+   *
+   * The curve itself only drops 30px.
+   * The 180px wrapper gives the curve enough physical
+   * space to visibly grow downward.
    */
 
-const curveDepth = useTransform(
-  scrollYProgress,
-  [0.78, 0.84, 0.92, 1],
-  [0, 20, 55, 90]
-);
-const curveScale = useTransform(
-  scrollYProgress,
-  [0.78, 1],
-  [125 / 150, 1]
-);
+  const curveDepth = useTransform(
+    scrollYProgress,
+    [0.88, 0.93, 0.97, 1],
+    [0, 6, 16, 30]
+  );
+
+  const curveScale = useTransform(
+    scrollYProgress,
+    [0.88, 1],
+    [0.45, 1]
+  );
 
   const curvePath = useTransform(
     curveDepth,
@@ -89,11 +96,7 @@ const curveScale = useTransform(
         0 0
        Z`
   );
-  const curveHeight = useTransform(
-  scrollYProgress,
-  [0.75, 1],
-  [125, 180]
-);
+
   return (
     <section
       ref={projectsRef}
@@ -101,50 +104,10 @@ const curveScale = useTransform(
     >
 
       {/* =====================================================
-          CONTINUOUS GRID
-
-          One grid for the entire Projects section.
-
-          It covers:
-          - Project area
-          - Closing footer
-          - Curved ending
-
-          This is intentionally OUTSIDE the sticky viewport.
-      ===================================================== */}
-
-      <div className="absolute inset-0 pointer-events-none z-10">
-
-        {/* Vertical lines */}
-
-        <div className="absolute left-[4vw] top-0 bottom-0 border-l border-white/[0.04]" />
-
-        <div className="absolute left-[25vw] top-0 bottom-0 border-l border-white/[0.04]" />
-
-        <div className="absolute left-[50vw] top-0 bottom-0 border-l border-white/[0.04]" />
-
-        <div className="absolute left-[75vw] top-0 bottom-0 border-l border-white/[0.04]" />
-
-        <div className="absolute right-[4vw] top-0 bottom-0 border-r border-white/[0.04]" />
-
-        {/* Horizontal lines */}
-
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, transparent 0, transparent calc(20vh - 1px), rgba(255,255,255,0.04) 20vh, transparent calc(20vh + 1px))",
-          }}
-        />
-      </div>
-
-
-      {/* =====================================================
           PROJECT AREA
-          300vh
       ===================================================== */}
 
-      <div className="relative h-[300vh] bg-[#111112]">
+      <div className="relative h-[360vh] bg-[#111112]">
 
         {/* =====================================================
             STICKY PROJECT VIEWPORT
@@ -169,19 +132,23 @@ const curveScale = useTransform(
 
             <div className="absolute left-[5vw] top-[18vh]">
 
-              <div className="font-mono text-xs tracking-[0.2em] text-white/40">
-                / 01
-              </div>
+              <Reveal color="#D2FF00">
+                <div className="font-mono text-xs tracking-[0.2em] text-white/40">
+                  / 01
+                </div>
+              </Reveal>
 
               <div className="h-20 w-px bg-white/20 mt-4" />
 
-              <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25 mt-4">
-                BUILD
-                <br />
-                LEARN
-                <br />
-                IMPROVE
-              </div>
+              <Reveal color="#D2FF00" delay={0.08}>
+                <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25 mt-4">
+                  BUILD
+                  <br />
+                  LEARN
+                  <br />
+                  IMPROVE
+                </div>
+              </Reveal>
 
             </div>
 
@@ -212,69 +179,81 @@ const curveScale = useTransform(
                   }}
                 />
 
-                <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
-                  / DEVELOPMENT
-                </span>
+                <Reveal color="#D2FF00">
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
+                    / DEVELOPMENT
+                  </span>
+                </Reveal>
 
               </div>
 
 
-              <h2 className="text-white text-5xl font-bold tracking-tight">
-                Project
-                <span className="text-[#D2FF00]">
-                  .
-                </span>
-              </h2>
+              <Reveal color="#D2FF00">
+                <h2 className="text-white text-5xl font-bold tracking-tight">
+                  Project
+                  <span className="text-[#D2FF00]">
+                    .
+                  </span>
+                </h2>
+              </Reveal>
 
 
-              <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
-                A digital experience built with a focus on interaction,
-                performance and detail.
-              </p>
+              <Reveal color="#D2FF00" delay={0.08}>
+                <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
+                  A digital experience built with a focus on interaction,
+                  performance and detail.
+                </p>
+              </Reveal>
 
 
               <div className="flex gap-2 flex-wrap mt-6">
 
-                {["Next.js", "React", "Motion"].map((item) => (
-                  <motion.span
+                {["Next.js", "React", "Motion"].map((item, index) => (
+                  <Reveal
                     key={item}
-                    whileHover={{
-                      y: -3,
-                      borderColor: "#D2FF00",
-                      color: "#D2FF00",
-                    }}
-                    transition={{
-                      duration: 0.2,
-                    }}
-                    className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
+                    color="#D2FF00"
+                    delay={0.12 + index * 0.06}
                   >
-                    {item}
-                  </motion.span>
+                    <motion.span
+                      whileHover={{
+                        y: -3,
+                        borderColor: "#D2FF00",
+                        color: "#D2FF00",
+                      }}
+                      transition={{
+                        duration: 0.2,
+                      }}
+                      className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
+                    >
+                      {item}
+                    </motion.span>
+                  </Reveal>
                 ))}
 
               </div>
 
 
-              <motion.div
-                className="inline-block mt-7"
-                whileHover={{ x: 6 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 250,
-                }}
-              >
-
-                <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
-                  View Project ↗
-                </span>
-
-              </motion.div>
+              <Reveal color="#D2FF00" delay={0.3}>
+                <motion.div
+                  className="inline-block mt-7"
+                  whileHover={{ x: 6 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 250,
+                  }}
+                >
+                  <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
+                    View Project ↗
+                  </span>
+                </motion.div>
+              </Reveal>
 
             </motion.div>
 
 
             {/* =================================================
                 PROJECT 01 VISUAL
+                NO REVEAL INSIDE THIS DIV
             ================================================= */}
 
             <motion.div
@@ -373,15 +352,15 @@ const curveScale = useTransform(
 
             <div className="absolute right-[5vw] top-[35vh]">
 
-              <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25">
-
-                IDEAS
-                <br />
-                INTO
-                <br />
-                INTERFACES
-
-              </div>
+              <Reveal color="#D2FF00">
+                <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25">
+                  IDEAS
+                  <br />
+                  INTO
+                  <br />
+                  INTERFACES
+                </div>
+              </Reveal>
 
             </div>
 
@@ -405,28 +384,30 @@ const curveScale = useTransform(
 
             <div className="absolute right-[5vw] top-[18vh]">
 
-              <div className="font-mono text-xs tracking-[0.2em] text-white/40">
-                / 02
-              </div>
+              <Reveal color="#D2FF00">
+                <div className="font-mono text-xs tracking-[0.2em] text-white/40">
+                  / 02
+                </div>
+              </Reveal>
 
               <div className="h-20 w-px bg-white/20 mt-4" />
 
-              <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25 mt-4">
-
-                CREATE
-                <br />
-                EXPLORE
-                <br />
-                EXPRESS
-
-              </div>
+              <Reveal color="#D2FF00" delay={0.08}>
+                <div className="font-mono text-[9px] tracking-[0.25em] leading-5 text-white/25 mt-4">
+                  CREATE
+                  <br />
+                  EXPLORE
+                  <br />
+                  EXPRESS
+                </div>
+              </Reveal>
 
             </div>
 
 
             {/* =================================================
                 PROJECT 02 VISUAL
-                Vertically centered.
+                NO REVEAL INSIDE THIS DIV
             ================================================= */}
 
             <motion.div
@@ -533,62 +514,70 @@ const curveScale = useTransform(
                   }}
                 />
 
-                <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
-                  / WEB EXPERIENCE
-                </span>
+                <Reveal color="#D2FF00">
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
+                    / WEB EXPERIENCE
+                  </span>
+                </Reveal>
 
               </div>
 
 
-              <h2 className="text-white text-5xl font-bold tracking-tight">
+              <Reveal color="#D2FF00">
+                <h2 className="text-white text-5xl font-bold tracking-tight">
+                  Project Two
+                  <span className="text-[#D2FF00]">
+                    .
+                  </span>
+                </h2>
+              </Reveal>
 
-                Project Two
 
-                <span className="text-[#D2FF00]">
-                  .
-                </span>
-
-              </h2>
-
-
-              <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
-                An experimental interface exploring visual systems,
-                movement and usability.
-              </p>
+              <Reveal color="#D2FF00" delay={0.08}>
+                <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
+                  An experimental interface exploring visual systems,
+                  movement and usability.
+                </p>
+              </Reveal>
 
 
               <div className="flex gap-2 flex-wrap mt-6">
 
-                {["React", "Tailwind", "GSAP"].map((item) => (
-                  <motion.span
+                {["React", "Tailwind", "GSAP"].map((item, index) => (
+                  <Reveal
                     key={item}
-                    whileHover={{
-                      y: -3,
-                      borderColor: "#D2FF00",
-                      color: "#D2FF00",
-                    }}
-                    transition={{
-                      duration: 0.2,
-                    }}
-                    className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
+                    color="#D2FF00"
+                    delay={0.12 + index * 0.06}
                   >
-                    {item}
-                  </motion.span>
+                    <motion.span
+                      whileHover={{
+                        y: -3,
+                        borderColor: "#D2FF00",
+                        color: "#D2FF00",
+                      }}
+                      transition={{
+                        duration: 0.2,
+                      }}
+                      className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
+                    >
+                      {item}
+                    </motion.span>
+                  </Reveal>
                 ))}
 
               </div>
 
 
-              <motion.div
-                className="inline-block mt-7"
-                whileHover={{ x: 6 }}
-              >
-
-                <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
-                  View Project ↗
-                </span>
-
-              </motion.div>
+              <Reveal color="#D2FF00" delay={0.3}>
+                <motion.div
+                  className="inline-block mt-7"
+                  whileHover={{ x: 6 }}
+                >
+                  <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
+                    View Project ↗
+                  </span>
+                </motion.div>
+              </Reveal>
 
             </motion.div>
 
@@ -601,22 +590,19 @@ const curveScale = useTransform(
 
           <div className="absolute bottom-6 left-8 right-8 flex justify-between items-end pointer-events-none z-30">
 
-            <div className="font-mono text-[8px] tracking-[0.2em] text-white/25">
+            <Reveal color="#D2FF00">
+              <div className="font-mono text-[8px] tracking-[0.2em] text-white/25">
+                AMAN SINGH
+                <br />
+                SELECTED WORK
+              </div>
+            </Reveal>
 
-              AMAN SINGH
-
-              <br />
-
-              SELECTED WORK
-
-            </div>
-
-
-            <div className="font-mono text-[8px] tracking-[0.2em] text-white/25">
-
-              01 — 02
-
-            </div>
+            <Reveal color="#D2FF00" delay={0.1}>
+              <div className="font-mono text-[8px] tracking-[0.2em] text-white/25">
+                01 — 02
+              </div>
+            </Reveal>
 
           </div>
 
@@ -627,41 +613,39 @@ const curveScale = useTransform(
 
       {/* =====================================================
           PROJECTS CLOSING FOOTER
-
-          60vh.
-          The same continuous grid passes through it.
       ===================================================== */}
 
-      <footer className="relative h-[60vh] bg-[#111112]">
+      <footer className="relative h-[55vh] bg-[#111112]">
 
-        <div className="relative z-30 h-full flex flex-col items-center justify-center text-center">
+        <div className="relative z-30 h-full flex flex-col items-center justify-center text-center bottom-9">
+
+          {/* STAR — NO REVEAL */}
 
           <div className="text-[#D2FF00] text-xl leading-none mb-5">
             ✦
           </div>
 
 
-          <h2 className="font-serif text-[clamp(24px,2.8vw,42px)] leading-[0.95] tracking-[-0.03em] text-white">
+          {/* FOOTER TEXT */}
 
-            See more work and ideas
+          <Reveal color="#D2FF00">
+            <h2 className="font-serif text-[clamp(24px,2.8vw,42px)] leading-[0.95] tracking-[-0.03em] text-white">
+              See more work and ideas
+              <br />
+              from Aman.
+            </h2>
+          </Reveal>
 
-            <br />
 
-            from Aman.
-
-          </h2>
-
-
-          <a
-            href="#projects"
-            className="mt-6 inline-flex items-center gap-2 bg-[#D2FF00] px-5 py-3 font-mono text-[9px] font-bold tracking-[0.08em] text-black transition-transform duration-300 hover:scale-105"
-          >
-
-            VIEW ALL WORK
-
-            <span>↗</span>
-
-          </a>
+          <Reveal color="#D2FF00" delay={0.1}>
+            <a
+              href="#projects"
+              className="mt-6 inline-flex items-center gap-2 bg-[#D2FF00] px-5 py-3 font-mono text-[9px] font-bold tracking-[0.08em] text-black transition-transform duration-300 hover:scale-105"
+            >
+              VIEW ALL WORK
+              <span>↗</span>
+            </a>
+          </Reveal>
 
         </div>
 
@@ -670,31 +654,34 @@ const curveScale = useTransform(
 
       {/* =====================================================
           CURVED TRANSITION
-
-          The curve stays underneath the continuous grid,
-          so the grid remains visible inside the curve.
       ===================================================== */}
 
-<div className="relative h-[150px] pointer-events-none z-0">
-  <motion.div
-    className="absolute inset-x-0 top-0 h-[150px]"
-    style={{
-      scaleY: curveScale,
-      transformOrigin: "top",
-    }}
-  >
-    <svg
-      viewBox="0 0 1440 120"
-      preserveAspectRatio="none"
-      className="absolute inset-0 w-full h-full"
-    >
-      <motion.path
-        d={curvePath}
-        fill="#111112"
-      />
-    </svg>
-  </motion.div>
-</div>
+      <div className="relative h-[180px] pointer-events-none z-0">
+
+        <motion.div
+          className="absolute inset-x-0 top-0 h-[180px]"
+          style={{
+            scaleY: curveScale,
+            transformOrigin: "top",
+          }}
+        >
+
+          <svg
+            viewBox="0 0 1440 120"
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full"
+          >
+
+            <motion.path
+              d={curvePath}
+              fill="#111112"
+            />
+
+          </svg>
+
+        </motion.div>
+
+      </div>
 
     </section>
   );
