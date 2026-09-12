@@ -110,7 +110,7 @@ export default function ConclusionSection({ conclusionRef }) {
 
               {/* Heading is a div because Reveal itself is a div */}
 
-              <div className="mt-5 max-w-[760px] font-serif text-[clamp(46px,6vw,88px)] leading-[0.86] tracking-[-0.05em] text-[#FDFBF5]">
+              <div className="mt-5 max-w-190 font-serif text-[clamp(46px,6vw,88px)] leading-[0.86] tracking-[-0.05em] text-[#FDFBF5]">
 
                 <Reveal color="#D2FF00" delay={0.08}>
                   DON'T SEND
@@ -131,7 +131,7 @@ export default function ConclusionSection({ conclusionRef }) {
             </div>
 
 
-            <div className="mt-[6vh] max-w-[250px] lg:mt-auto lg:mb-2">
+            <div className="mt-[6vh] max-w-62.5 lg:mt-auto lg:mb-2">
 
               <div className="font-mono text-[8px] tracking-[0.2em] text-[#FDFBF5]/45">
                 <Reveal color="#D2FF00" delay={0.16}>
@@ -418,7 +418,7 @@ function ContactFrame() {
           </div>
 
 
-          <div className="mt-[8vh] max-w-[190px] font-mono text-[8px] leading-5 text-[#FDFBF5]/55">
+          <div className="mt-[8vh] max-w-47.5 font-mono text-[8px] leading-5 text-[#FDFBF5]/55">
 
             <Reveal color="#D2FF00" delay={0.16}>
               No formal brief.
@@ -638,9 +638,9 @@ function Field({
 function SuccessState() {
 
   return (
-    <div className="min-h-[600px] p-[5vw] lg:p-[4vw]">
+    <div className="min-h-150 p-[5vw] lg:p-[4vw]">
 
-      <div className="flex min-h-[500px] flex-col justify-between">
+      <div className="flex min-h-125 flex-col justify-between">
 
         <div className="flex items-center justify-between">
 
@@ -698,7 +698,7 @@ function SuccessState() {
 
         <div className="flex items-end justify-between">
 
-          <div className="max-w-[240px] font-mono text-[9px] leading-5 text-[#FDFBF5]/55">
+          <div className="max-w-60 font-mono text-[9px] leading-5 text-[#FDFBF5]/55">
 
             <Reveal color="#D2FF00" delay={0.16}>
               The interface is ready.

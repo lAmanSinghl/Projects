@@ -199,7 +199,7 @@ export default function ProjectsSection({ projectsRef }) {
 
 
               <Reveal color="#D2FF00" delay={0.08}>
-                <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
+                <p className="text-white/45 text-sm leading-6 mt-4 max-w-75">
                   A digital experience built with a focus on interaction,
                   performance and detail.
                 </p>
@@ -534,7 +534,7 @@ export default function ProjectsSection({ projectsRef }) {
 
 
               <Reveal color="#D2FF00" delay={0.08}>
-                <p className="text-white/45 text-sm leading-6 mt-4 max-w-[300px]">
+                <p className="text-white/45 text-sm leading-6 mt-4 max-w-75">
                   An experimental interface exploring visual systems,
                   movement and usability.
                 </p>
@@ -656,10 +656,10 @@ export default function ProjectsSection({ projectsRef }) {
           CURVED TRANSITION
       ===================================================== */}
 
-      <div className="relative h-[180px] pointer-events-none z-0">
+      <div className="relative h-45 pointer-events-none z-0">
 
         <motion.div
-          className="absolute inset-x-0 top-0 h-[180px]"
+          className="absolute inset-x-0 top-0 h-45"
           style={{
             scaleY: curveScale,
             transformOrigin: "top",
