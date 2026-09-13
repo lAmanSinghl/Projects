@@ -9,7 +9,7 @@ export default function IntroSection() {
 
   const isIntroInView = useInView(introRef, {
     once: true,
-    amount: 0.2,
+    amount: 0.1,
   });
 
   return (
@@ -29,20 +29,25 @@ export default function IntroSection() {
           </div>
         </RevealText>
 
+
         <RevealText
           isTriggered={isIntroInView}
           delay={0.08}
           className="z-1"
         >
           <div className="flex font-datatype font-bold text-8xl text-[#DDE1D2] text-center scale-y-110 justify-center items-center gap-3">
+
             <div className="font-medula scale-x-180 text-[#B2C73A] tracking-[3px] font-semibold scale-y-115 w-131">
               SOFTWARE,
             </div>
+
             <div className="scale-x-105 felx pt-0.5 w-125 relative right- tracking-tight">
               CRAFTING
             </div>
+
           </div>
         </RevealText>
+
 
         <RevealText
           isTriggered={isIntroInView}
@@ -50,14 +55,18 @@ export default function IntroSection() {
           className="w-fit"
         >
           <div className="font-datatype font-bold text-8xl text-[#DDE1D2] text-center scale-y-110 flex justify-center gap-4">
+
             <div className="scale-x-105 tracking-tight felx pt-0.5 w-108">
               MODERN
             </div>
+
             <div className="font-medula scale-x-180 text-[#B2C73A] tracking-[3px] font-semibold scale-y-115 w-166">
               EXPERIENCES,
             </div>
+
           </div>
         </RevealText>
+
 
         <RevealText
           isTriggered={isIntroInView}
@@ -69,19 +78,24 @@ export default function IntroSection() {
           </div>
         </RevealText>
 
+
         <RevealText
           isTriggered={isIntroInView}
           delay={0.32}
         >
           <div className="font-datatype font-bold text-8xl text-[#DDE1D2] text-center scale-y-110 flex gap-4">
+
             <div className="font-medula scale-x-180 text-[#B2C73A] tracking-[3px] font-semibold scale-y-115 w-69">
               IDEAS
             </div>
+
             <div className="scale-x-105 tracking-tight felx pt-0.5 w-200">
               INTO PRODUCTS
             </div>
+
           </div>
         </RevealText>
+
 
         <RevealText
           isTriggered={isIntroInView}
@@ -92,6 +106,7 @@ export default function IntroSection() {
             THAT SOLVE REAL
           </div>
         </RevealText>
+
 
         <RevealText
           isTriggered={isIntroInView}
