@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  motion,
-  useScroll,
-  useTransform,
-} from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
 import Reveal from "@/components/Reveal";
 
 export default function ProjectsSection({ projectsRef }) {
@@ -19,23 +15,11 @@ export default function ProjectsSection({ projectsRef }) {
    * =====================================================
    */
 
-  const projectOneY = useTransform(
-    scrollYProgress,
-    [0, 0.35, 0.52, 0.62],
-    ["0vh", "0vh", "-30vh", "-100vh"]
-  );
+  const projectOneY = useTransform(scrollYProgress, [0, 0.35, 0.52, 0.62], ["0vh", "0vh", "-30vh", "-100vh"]);
 
-  const projectOneOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.48, 0.62],
-    [1, 1, 0]
-  );
+  const projectOneOpacity = useTransform(scrollYProgress, [0, 0.48, 0.62], [1, 1, 0]);
 
-  const projectOneScale = useTransform(
-    scrollYProgress,
-    [0, 0.48, 0.62],
-    [1, 1, 0.94]
-  );
+  const projectOneScale = useTransform(scrollYProgress, [0, 0.48, 0.62], [1, 1, 0.94]);
 
   /*
    * =====================================================
@@ -44,23 +28,11 @@ export default function ProjectsSection({ projectsRef }) {
    * =====================================================
    */
 
-  const projectTwoY = useTransform(
-    scrollYProgress,
-    [0.50, 0.64],
-    ["65vh", "0vh"]
-  );
+  const projectTwoY = useTransform(scrollYProgress, [0.50, 0.64], ["65vh", "0vh"]);
 
-  const projectTwoOpacity = useTransform(
-    scrollYProgress,
-    [0.50, 0.60],
-    [0, 1]
-  );
+  const projectTwoOpacity = useTransform(scrollYProgress, [0.50, 0.60], [0, 1]);
 
-  const projectTwoScale = useTransform(
-    scrollYProgress,
-    [0.50, 0.64],
-    [0.96, 1]
-  );
+  const projectTwoScale = useTransform(scrollYProgress, [0.50, 0.64], [0.96, 1]);
 
   /*
    * =====================================================
@@ -74,17 +46,9 @@ export default function ProjectsSection({ projectsRef }) {
    * space to visibly grow downward.
    */
 
-  const curveDepth = useTransform(
-    scrollYProgress,
-    [0.88, 0.93, 0.97, 1],
-    [0, 6, 16, 30]
-  );
+  const curveDepth = useTransform(scrollYProgress, [0.88, 0.93, 0.97, 1], [0, 6, 16, 30]);
 
-  const curveScale = useTransform(
-    scrollYProgress,
-    [0.88, 1],
-    [0.45, 1]
-  );
+  const curveScale = useTransform(scrollYProgress, [0.88, 1], [0.45, 1]);
 
   const curvePath = useTransform(
     curveDepth,
@@ -98,10 +62,7 @@ export default function ProjectsSection({ projectsRef }) {
   );
 
   return (
-    <section
-      ref={projectsRef}
-      className="relative h-[calc(360vh+180px)] -mt-[100vh] z-20"
-    >
+    <section ref={projectsRef} className="relative h-[calc(360vh+180px)] -mt-[100vh] z-20">
 
       {/* =====================================================
           PROJECT AREA
@@ -119,14 +80,7 @@ export default function ProjectsSection({ projectsRef }) {
               PROJECT 01
           ===================================================== */}
 
-          <motion.article
-            style={{
-              y: projectOneY,
-              opacity: projectOneOpacity,
-              scale: projectOneScale,
-            }}
-            className="absolute inset-0 z-20"
-          >
+          <motion.article style={{ y: projectOneY, opacity: projectOneOpacity, scale: projectOneScale }} className="absolute inset-0 z-20">
 
             {/* NUMBER */}
 
@@ -152,32 +106,13 @@ export default function ProjectsSection({ projectsRef }) {
 
             </div>
 
-
             {/* PROJECT 01 INFO */}
 
-            <motion.div
-              className="absolute left-[12vw] top-1/2 -translate-y-1/2 w-[25vw]"
-              whileHover={{ x: 5 }}
-              transition={{
-                type: "spring",
-                stiffness: 180,
-                damping: 20,
-              }}
-            >
+            <motion.div className="absolute left-[12vw] top-1/2 -translate-y-1/2 w-[25vw]" whileHover={{ x: 5 }} transition={{ type: "spring", stiffness: 180, damping: 20 }}>
 
               <div className="flex items-center gap-2 mb-4">
 
-                <motion.span
-                  className="w-2 h-2 rounded-full bg-[#D2FF00]"
-                  animate={{
-                    scale: [1, 1.35, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                <motion.span className="w-2 h-2 rounded-full bg-[#D2FF00]" animate={{ scale: [1, 1.35, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
 
                 <Reveal color="#D2FF00">
                   <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
@@ -186,7 +121,6 @@ export default function ProjectsSection({ projectsRef }) {
                 </Reveal>
 
               </div>
-
 
               <Reveal color="#D2FF00">
                 <h2 className="text-white text-5xl font-bold tracking-tight">
@@ -197,7 +131,6 @@ export default function ProjectsSection({ projectsRef }) {
                 </h2>
               </Reveal>
 
-
               <Reveal color="#D2FF00" delay={0.08}>
                 <p className="text-white/45 text-sm leading-6 mt-4 max-w-75">
                   A digital experience built with a focus on interaction,
@@ -205,26 +138,11 @@ export default function ProjectsSection({ projectsRef }) {
                 </p>
               </Reveal>
 
-
               <div className="flex gap-2 flex-wrap mt-6">
 
                 {["Next.js", "React", "Motion"].map((item, index) => (
-                  <Reveal
-                    key={item}
-                    color="#D2FF00"
-                    delay={0.12 + index * 0.06}
-                  >
-                    <motion.span
-                      whileHover={{
-                        y: -3,
-                        borderColor: "#D2FF00",
-                        color: "#D2FF00",
-                      }}
-                      transition={{
-                        duration: 0.2,
-                      }}
-                      className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
-                    >
+                  <Reveal key={item} color="#D2FF00" delay={0.12 + index * 0.06}>
+                    <motion.span whileHover={{ y: -3, borderColor: "#D2FF00", color: "#D2FF00" }} transition={{ duration: 0.2 }} className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default">
                       {item}
                     </motion.span>
                   </Reveal>
@@ -232,16 +150,8 @@ export default function ProjectsSection({ projectsRef }) {
 
               </div>
 
-
               <Reveal color="#D2FF00" delay={0.3}>
-                <motion.div
-                  className="inline-block mt-7"
-                  whileHover={{ x: 6 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 250,
-                  }}
-                >
+                <motion.div className="inline-block mt-7" whileHover={{ x: 6 }} transition={{ type: "spring", stiffness: 250 }}>
                   <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
                     View Project ↗
                   </span>
@@ -250,25 +160,12 @@ export default function ProjectsSection({ projectsRef }) {
 
             </motion.div>
 
-
             {/* =================================================
                 PROJECT 01 VISUAL
                 NO REVEAL INSIDE THIS DIV
             ================================================= */}
 
-            <motion.div
-              className="absolute left-[43vw] top-1/2 -translate-y-1/2 w-[50vw] h-[64vh]"
-              whileHover={{
-                rotate: -1,
-                scale: 1.015,
-                y: -6,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 120,
-                damping: 18,
-              }}
-            >
+            <motion.div className="absolute left-[43vw] top-1/2 -translate-y-1/2 w-[50vw] h-[64vh]" whileHover={{ rotate: -1, scale: 1.015, y: -6 }} transition={{ type: "spring", stiffness: 120, damping: 18 }}>
 
               <div className="absolute inset-0 rounded-xl border border-white/15 bg-[#181819] overflow-hidden shadow-2xl">
 
@@ -286,7 +183,6 @@ export default function ProjectsSection({ projectsRef }) {
 
                 </div>
 
-
                 {/* Browser content */}
 
                 <div className="p-10">
@@ -295,49 +191,22 @@ export default function ProjectsSection({ projectsRef }) {
                     DIGITAL PRODUCT
                   </div>
 
-
                   <div className="text-white text-5xl font-bold mt-7 leading-[0.95]">
-
                     Build things
-
                     <br />
-
                     that feel
-
                     <span className="text-[#D2FF00]">
                       {" "}right.
                     </span>
-
                   </div>
-
 
                   <div className="mt-10 h-44 border border-white/10 rounded-lg relative overflow-hidden">
 
-                    <motion.div
-                      className="absolute left-8 top-8 h-3 bg-white/20 rounded-full"
-                      animate={{
-                        width: [120, 180, 120],
-                      }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    />
+                    <motion.div className="absolute left-8 top-8 h-3 bg-white/20 rounded-full" animate={{ width: [120, 180, 120] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
 
                     <div className="absolute left-8 top-16 w-48 h-2 bg-white/10 rounded-full" />
 
-                    <motion.div
-                      className="absolute right-10 top-7 w-20 h-20 rounded-full border border-[#D2FF00]/40"
-                      animate={{
-                        rotate: 360,
-                      }}
-                      transition={{
-                        duration: 12,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    />
+                    <motion.div className="absolute right-10 top-7 w-20 h-20 rounded-full border border-[#D2FF00]/40" animate={{ rotate: 360 }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} />
 
                   </div>
 
@@ -346,7 +215,6 @@ export default function ProjectsSection({ projectsRef }) {
               </div>
 
             </motion.div>
-
 
             {/* RIGHT SIDE */}
 
@@ -366,19 +234,11 @@ export default function ProjectsSection({ projectsRef }) {
 
           </motion.article>
 
-
           {/* =====================================================
               PROJECT 02
           ===================================================== */}
 
-          <motion.article
-            style={{
-              y: projectTwoY,
-              opacity: projectTwoOpacity,
-              scale: projectTwoScale,
-            }}
-            className="absolute inset-0 z-20"
-          >
+          <motion.article style={{ y: projectTwoY, opacity: projectTwoOpacity, scale: projectTwoScale }} className="absolute inset-0 z-20">
 
             {/* NUMBER */}
 
@@ -404,25 +264,12 @@ export default function ProjectsSection({ projectsRef }) {
 
             </div>
 
-
             {/* =================================================
                 PROJECT 02 VISUAL
                 NO REVEAL INSIDE THIS DIV
             ================================================= */}
 
-            <motion.div
-              className="absolute left-[6vw] top-1/2 -translate-y-1/2 w-[51vw] h-[62vh]"
-              whileHover={{
-                rotate: 1,
-                scale: 1.015,
-                y: -6,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 120,
-                damping: 18,
-              }}
-            >
+            <motion.div className="absolute left-[6vw] top-1/2 -translate-y-1/2 w-[51vw] h-[62vh]" whileHover={{ rotate: 1, scale: 1.015, y: -6 }} transition={{ type: "spring", stiffness: 120, damping: 18 }}>
 
               <div className="absolute inset-0 rounded-xl border border-white/15 bg-[#e9e9e7] overflow-hidden shadow-2xl">
 
@@ -440,7 +287,6 @@ export default function ProjectsSection({ projectsRef }) {
 
                 </div>
 
-
                 {/* Browser content */}
 
                 <div className="p-10 text-black">
@@ -449,33 +295,16 @@ export default function ProjectsSection({ projectsRef }) {
                     CREATIVE TOOL
                   </div>
 
-
                   <div className="text-5xl font-bold mt-7 leading-[0.95]">
-
                     Turn ideas
-
                     <br />
-
                     into visuals.
-
                   </div>
-
 
                   <div className="grid grid-cols-2 gap-3 mt-8">
 
                     {[1, 2, 3, 4].map((item) => (
-                      <motion.div
-                        key={item}
-                        className="h-28 bg-black/10 rounded-lg"
-                        whileHover={{
-                          scale: 1.04,
-                          rotate: item % 2 ? -1 : 1,
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 200,
-                        }}
-                      />
+                      <motion.div key={item} className="h-28 bg-black/10 rounded-lg" whileHover={{ scale: 1.04, rotate: item % 2 ? -1 : 1 }} transition={{ type: "spring", stiffness: 200 }} />
                     ))}
 
                   </div>
@@ -486,33 +315,13 @@ export default function ProjectsSection({ projectsRef }) {
 
             </motion.div>
 
-
             {/* PROJECT 02 INFO */}
 
-            <motion.div
-              className="absolute left-[62vw] top-1/2 -translate-y-1/2 w-[27vw]"
-              whileHover={{ x: -5 }}
-              transition={{
-                type: "spring",
-                stiffness: 180,
-                damping: 20,
-              }}
-            >
+            <motion.div className="absolute left-[62vw] top-1/2 -translate-y-1/2 w-[27vw]" whileHover={{ x: -5 }} transition={{ type: "spring", stiffness: 180, damping: 20 }}>
 
               <div className="flex items-center gap-2 mb-4">
 
-                <motion.span
-                  className="w-2 h-2 rounded-full bg-[#D2FF00]"
-                  animate={{
-                    scale: [1, 1.35, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5,
-                  }}
-                />
+                <motion.span className="w-2 h-2 rounded-full bg-[#D2FF00]" animate={{ scale: [1, 1.35, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }} />
 
                 <Reveal color="#D2FF00">
                   <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">
@@ -521,7 +330,6 @@ export default function ProjectsSection({ projectsRef }) {
                 </Reveal>
 
               </div>
-
 
               <Reveal color="#D2FF00">
                 <h2 className="text-white text-5xl font-bold tracking-tight">
@@ -532,7 +340,6 @@ export default function ProjectsSection({ projectsRef }) {
                 </h2>
               </Reveal>
 
-
               <Reveal color="#D2FF00" delay={0.08}>
                 <p className="text-white/45 text-sm leading-6 mt-4 max-w-75">
                   An experimental interface exploring visual systems,
@@ -540,26 +347,11 @@ export default function ProjectsSection({ projectsRef }) {
                 </p>
               </Reveal>
 
-
               <div className="flex gap-2 flex-wrap mt-6">
 
                 {["React", "Tailwind", "GSAP"].map((item, index) => (
-                  <Reveal
-                    key={item}
-                    color="#D2FF00"
-                    delay={0.12 + index * 0.06}
-                  >
-                    <motion.span
-                      whileHover={{
-                        y: -3,
-                        borderColor: "#D2FF00",
-                        color: "#D2FF00",
-                      }}
-                      transition={{
-                        duration: 0.2,
-                      }}
-                      className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default"
-                    >
+                  <Reveal key={item} color="#D2FF00" delay={0.12 + index * 0.06}>
+                    <motion.span whileHover={{ y: -3, borderColor: "#D2FF00", color: "#D2FF00" }} transition={{ duration: 0.2 }} className="border border-white/15 rounded-full px-3 py-1 text-[10px] text-white/50 cursor-default">
                       {item}
                     </motion.span>
                   </Reveal>
@@ -567,12 +359,8 @@ export default function ProjectsSection({ projectsRef }) {
 
               </div>
 
-
               <Reveal color="#D2FF00" delay={0.3}>
-                <motion.div
-                  className="inline-block mt-7"
-                  whileHover={{ x: 6 }}
-                >
+                <motion.div className="inline-block mt-7" whileHover={{ x: 6 }}>
                   <span className="text-white text-sm border-b border-[#D2FF00] pb-2">
                     View Project ↗
                   </span>
@@ -582,7 +370,6 @@ export default function ProjectsSection({ projectsRef }) {
             </motion.div>
 
           </motion.article>
-
 
           {/* =====================================================
               PROJECT VIEWPORT FOOTER
@@ -610,7 +397,6 @@ export default function ProjectsSection({ projectsRef }) {
 
       </div>
 
-
       {/* =====================================================
           PROJECTS CLOSING FOOTER
       ===================================================== */}
@@ -625,7 +411,6 @@ export default function ProjectsSection({ projectsRef }) {
             ✦
           </div>
 
-
           {/* FOOTER TEXT */}
 
           <Reveal color="#D2FF00">
@@ -636,12 +421,8 @@ export default function ProjectsSection({ projectsRef }) {
             </h2>
           </Reveal>
 
-
           <Reveal color="#D2FF00" delay={0.1}>
-            <a
-              href="#projects"
-              className="mt-6 inline-flex items-center gap-2 bg-[#D2FF00] px-5 py-3 font-mono text-[9px] font-bold tracking-[0.08em] text-black transition-transform duration-300 hover:scale-105"
-            >
+            <a href="#projects" className="mt-6 inline-flex items-center gap-2 bg-[#D2FF00] px-5 py-3 font-mono text-[9px] font-bold tracking-[0.08em] text-black transition-transform duration-300 hover:scale-105">
               VIEW ALL WORK
               <span>↗</span>
             </a>
@@ -651,31 +432,17 @@ export default function ProjectsSection({ projectsRef }) {
 
       </footer>
 
-
       {/* =====================================================
           CURVED TRANSITION
       ===================================================== */}
 
       <div className="relative h-45 pointer-events-none z-0">
 
-        <motion.div
-          className="absolute inset-x-0 top-0 h-45"
-          style={{
-            scaleY: curveScale,
-            transformOrigin: "top",
-          }}
-        >
+        <motion.div className="absolute inset-x-0 top-0 h-45" style={{ scaleY: curveScale, transformOrigin: "top" }}>
 
-          <svg
-            viewBox="0 0 1440 120"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full"
-          >
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
 
-            <motion.path
-              d={curvePath}
-              fill="#111112"
-            />
+            <motion.path d={curvePath} fill="#111112" />
 
           </svg>
 

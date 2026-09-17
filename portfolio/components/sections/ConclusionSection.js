@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  motion,
-  useScroll,
-  useTransform,
-} from "motion/react";
-
+import { motion, useScroll, useTransform } from "motion/react";
 import { useState } from "react";
 import Reveal from "@/components/Reveal";
 
@@ -15,41 +10,14 @@ export default function ConclusionSection({ conclusionRef }) {
     offset: ["start end", "end start"],
   });
 
-  const introOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.12, 0.28],
-    [0, 1, 1]
-  );
-
-  const introY = useTransform(
-    scrollYProgress,
-    [0, 0.28],
-    ["50px", "0px"]
-  );
-
-  const frameOpacity = useTransform(
-    scrollYProgress,
-    [0.08, 0.28],
-    [0, 1]
-  );
-
-  const frameY = useTransform(
-    scrollYProgress,
-    [0.08, 0.38],
-    ["70px", "0px"]
-  );
-
-  const footerOpacity = useTransform(
-    scrollYProgress,
-    [0.58, 0.76],
-    [0, 1]
-  );
+  const introOpacity = useTransform(scrollYProgress, [0, 0.12, 0.28], [0, 1, 1]);
+  const introY = useTransform(scrollYProgress, [0, 0.28], ["50px", "0px"]);
+  const frameOpacity = useTransform(scrollYProgress, [0.08, 0.28], [0, 1]);
+  const frameY = useTransform(scrollYProgress, [0.08, 0.38], ["70px", "0px"]);
+  const footerOpacity = useTransform(scrollYProgress, [0.58, 0.76], [0, 1]);
 
   return (
-    <section
-      ref={conclusionRef}
-      className="relative z-30 min-h-[205vh] overflow-hidden bg-transparent text-[#FDFBF5]"
-    >
+    <section ref={conclusionRef} className="relative z-30 min-h-[205vh] overflow-hidden bg-transparent text-[#FDFBF5]">
 
       {/* =====================================================
           VISUAL OFFSET ONLY
@@ -61,13 +29,7 @@ export default function ConclusionSection({ conclusionRef }) {
             TOP LABEL
         ===================================================== */}
 
-        <motion.div
-          style={{
-            opacity: introOpacity,
-            y: introY,
-          }}
-          className="relative px-[5vw] pt-[17vh]"
-        >
+        <motion.div style={{ opacity: introOpacity, y: introY }} className="relative px-[5vw] pt-[17vh]">
 
           <div className="flex items-center justify-between">
 
@@ -77,9 +39,7 @@ export default function ConclusionSection({ conclusionRef }) {
               </Reveal>
             </div>
 
-
             <div className="flex items-center gap-3">
-
               <span className="h-1.5 w-1.5 rounded-full bg-[#D2FF00]" />
 
               <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/65">
@@ -87,11 +47,9 @@ export default function ConclusionSection({ conclusionRef }) {
                   CHANNEL OPEN
                 </Reveal>
               </div>
-
             </div>
 
           </div>
-
 
           {/* =================================================
               MAIN INTRO
@@ -106,7 +64,6 @@ export default function ConclusionSection({ conclusionRef }) {
                   LAST THING
                 </Reveal>
               </div>
-
 
               {/* Heading is a div because Reveal itself is a div */}
 
@@ -130,7 +87,6 @@ export default function ConclusionSection({ conclusionRef }) {
 
             </div>
 
-
             <div className="mt-[6vh] max-w-62.5 lg:mt-auto lg:mb-2">
 
               <div className="font-mono text-[8px] tracking-[0.2em] text-[#FDFBF5]/45">
@@ -138,7 +94,6 @@ export default function ConclusionSection({ conclusionRef }) {
                   START ANYWHERE
                 </Reveal>
               </div>
-
 
               <div className="mt-4 font-mono text-[9px] leading-5 text-[#FDFBF5]/70">
 
@@ -160,25 +115,7 @@ export default function ConclusionSection({ conclusionRef }) {
 
               </div>
 
-
-              <motion.div
-                initial={{
-                  scaleX: 0,
-                  transformOrigin: "left",
-                }}
-                whileInView={{
-                  scaleX: 1,
-                }}
-                viewport={{
-                  once: true,
-                  amount: 0.05,
-                }}
-                transition={{
-                  duration: 0.7,
-                  delay: 0.45,
-                }}
-                className="mt-6 h-px w-10 bg-[#D2FF00]"
-              />
+              <motion.div initial={{ scaleX: 0, transformOrigin: "left" }} whileInView={{ scaleX: 1 }} viewport={{ once: true, amount: 0.05 }} transition={{ duration: 0.7, delay: 0.45 }} className="mt-6 h-px w-10 bg-[#D2FF00]" />
 
             </div>
 
@@ -186,32 +123,19 @@ export default function ConclusionSection({ conclusionRef }) {
 
         </motion.div>
 
-
         {/* =====================================================
             CONTACT FRAME
         ===================================================== */}
 
-        <motion.div
-          style={{
-            opacity: frameOpacity,
-            y: frameY,
-          }}
-          className="relative mx-[5vw] mt-[13vh]"
-        >
+        <motion.div style={{ opacity: frameOpacity, y: frameY }} className="relative mx-[5vw] mt-[13vh]">
           <ContactFrame />
         </motion.div>
-
 
         {/* =====================================================
             FOOTER
         ===================================================== */}
 
-        <motion.div
-          style={{
-            opacity: footerOpacity,
-          }}
-          className="relative mx-[5vw] mt-[13vh] pb-[7vh]"
-        >
+        <motion.div style={{ opacity: footerOpacity }} className="relative mx-[5vw] mt-[13vh] pb-[7vh]">
 
           <div className="border-t border-[#FDFBF5]/25 pt-5">
 
@@ -225,7 +149,6 @@ export default function ConclusionSection({ conclusionRef }) {
                   </Reveal>
                 </div>
 
-
                 <div className="mt-2 font-mono text-[8px] tracking-[0.15em] text-[#FDFBF5]/45">
                   <Reveal color="#D2FF00" delay={0.08}>
                     DESIGN / CODE / EXPERIMENTS
@@ -233,7 +156,6 @@ export default function ConclusionSection({ conclusionRef }) {
                 </div>
 
               </div>
-
 
               <div className="flex items-center gap-4">
 
@@ -243,25 +165,15 @@ export default function ConclusionSection({ conclusionRef }) {
                   </Reveal>
                 </div>
 
-
                 <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/55">
-
-                  <a
-                    href="/resume.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="transition-colors hover:text-[#D2FF00]"
-                  >
+                  <a href="/resume.pdf" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-[#D2FF00]">
                     <Reveal color="#D2FF00" delay={0.24}>
                       CV / RESUME ↗
                     </Reveal>
                   </a>
-
                 </div>
 
-
                 <span className="h-1.5 w-1.5 rounded-full bg-[#D2FF00]" />
-
 
                 <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/55">
                   <Reveal color="#D2FF00" delay={0.32}>
@@ -283,13 +195,11 @@ export default function ConclusionSection({ conclusionRef }) {
   );
 }
 
-
 /* ================================================= */
 /* CONTACT FRAME */
 /* ================================================= */
 
 function ContactFrame() {
-
   const [sent, setSent] = useState(false);
 
   const [form, setForm] = useState({
@@ -299,52 +209,37 @@ function ContactFrame() {
     message: "",
   });
 
-
   const handleChange = (event) => {
-
     setForm((current) => ({
       ...current,
       [event.target.name]: event.target.value,
     }));
-
   };
 
-
   const handleSubmit = (event) => {
-
     event.preventDefault();
 
     // TEMPORARY
     // API will be connected later.
 
     setSent(true);
-
   };
-
 
   if (sent) {
     return <SuccessState />;
   }
 
-
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="relative border border-[#FDFBF5]/35"
-    >
+    <form onSubmit={handleSubmit} className="relative border border-[#FDFBF5]/35">
 
       {/* =================================================
           CORNER MARKS
       ================================================= */}
 
       <div className="absolute -left-px -top-px h-3 w-3 border-l border-t border-[#FDFBF5]" />
-
       <div className="absolute -right-px -top-px h-3 w-3 border-r border-t border-[#FDFBF5]" />
-
       <div className="absolute -bottom-px -left-px h-3 w-3 border-b border-l border-[#FDFBF5]" />
-
       <div className="absolute -bottom-px -right-px h-3 w-3 border-b border-r border-[#FDFBF5]" />
-
 
       {/* =================================================
           HEADER
@@ -353,7 +248,6 @@ function ContactFrame() {
       <div className="flex items-center justify-between border-b border-[#FDFBF5]/25 px-[5vw] py-5 lg:px-[3vw]">
 
         <div className="flex items-center gap-3">
-
           <span className="h-2 w-2 bg-[#D2FF00]" />
 
           <div className="font-mono text-[9px] tracking-[0.2em] text-[#FDFBF5]">
@@ -361,9 +255,7 @@ function ContactFrame() {
               OPEN CHANNEL
             </Reveal>
           </div>
-
         </div>
-
 
         <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/45">
           <Reveal color="#D2FF00" delay={0.08}>
@@ -372,7 +264,6 @@ function ContactFrame() {
         </div>
 
       </div>
-
 
       {/* =================================================
           CONTENT
@@ -389,7 +280,6 @@ function ContactFrame() {
               TRANSMISSION
             </Reveal>
           </div>
-
 
           <div className="mt-[6vh]">
 
@@ -417,7 +307,6 @@ function ContactFrame() {
 
           </div>
 
-
           <div className="mt-[8vh] max-w-47.5 font-mono text-[8px] leading-5 text-[#FDFBF5]/55">
 
             <Reveal color="#D2FF00" delay={0.16}>
@@ -433,7 +322,6 @@ function ContactFrame() {
             </Reveal>
 
           </div>
-
 
           <div className="mt-[8vh] font-mono text-[8px] leading-4 tracking-[0.15em] text-[#FDFBF5]/35">
 
@@ -457,49 +345,21 @@ function ContactFrame() {
 
         </div>
 
-
         {/* RIGHT */}
 
         <div className="p-[5vw] lg:p-[3vw]">
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
 
-            <Field
-              number="01"
-              label="NAME"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Your name"
-            />
+            <Field number="01" label="NAME" name="name" value={form.name} onChange={handleChange} placeholder="Your name" />
 
-
-            <Field
-              number="02"
-              label="EMAIL"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="Your email"
-            />
+            <Field number="02" label="EMAIL" name="email" type="email" value={form.email} onChange={handleChange} placeholder="Your email" />
 
           </div>
-
 
           <div className="mt-8">
-
-            <Field
-              number="03"
-              label="PROJECT"
-              name="project"
-              value={form.project}
-              onChange={handleChange}
-              placeholder="What are we making?"
-            />
-
+            <Field number="03" label="PROJECT" name="project" value={form.project} onChange={handleChange} placeholder="What are we making?" />
           </div>
-
 
           <div className="mt-8">
 
@@ -511,7 +371,6 @@ function ContactFrame() {
                 </Reveal>
               </div>
 
-
               <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/60">
                 <Reveal color="#D2FF00" delay={0.08}>
                   MESSAGE
@@ -520,19 +379,9 @@ function ContactFrame() {
 
             </div>
 
-
-            <textarea
-              id="message"
-              name="message"
-              value={form.message}
-              onChange={handleChange}
-              placeholder="Start anywhere..."
-              rows={6}
-              className="w-full resize-none border-b border-[#FDFBF5]/30 bg-transparent py-2 font-mono text-[10px] leading-5 text-[#FDFBF5] outline-none placeholder:text-[#FDFBF5]/30 focus:border-[#D2FF00]"
-            />
+            <textarea id="message" name="message" value={form.message} onChange={handleChange} placeholder="Start anywhere..." rows={6} className="w-full resize-none border-b border-[#FDFBF5]/30 bg-transparent py-2 font-mono text-[10px] leading-5 text-[#FDFBF5] outline-none placeholder:text-[#FDFBF5]/30 focus:border-[#D2FF00]" />
 
           </div>
-
 
           {/* SEND */}
 
@@ -550,18 +399,13 @@ function ContactFrame() {
 
             </div>
 
-
-            <button
-              type="submit"
-              className="group flex items-center gap-4 font-mono text-[9px] tracking-[0.18em] text-[#FDFBF5]"
-            >
+            <button type="submit" className="group flex items-center gap-4 font-mono text-[9px] tracking-[0.18em] text-[#FDFBF5]">
 
               <div>
                 <Reveal color="#D2FF00">
                   TRANSMIT
                 </Reveal>
               </div>
-
 
               <span className="flex h-11 w-11 items-center justify-center border border-[#FDFBF5]/40 transition-all duration-300 group-hover:border-[#D2FF00] group-hover:bg-[#D2FF00] group-hover:text-[#171717]">
                 ↗
@@ -579,21 +423,11 @@ function ContactFrame() {
   );
 }
 
-
 /* ================================================= */
 /* FIELD */
 /* ================================================= */
 
-function Field({
-  number,
-  label,
-  name,
-  type = "text",
-  value,
-  onChange,
-  placeholder,
-}) {
-
+function Field({ number, label, name, type = "text", value, onChange, placeholder }) {
   return (
     <div>
 
@@ -605,7 +439,6 @@ function Field({
           </Reveal>
         </div>
 
-
         <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/60">
           <Reveal color="#D2FF00" delay={0.08}>
             {label}
@@ -614,29 +447,17 @@ function Field({
 
       </div>
 
-
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required
-        className="w-full border-b border-[#FDFBF5]/30 bg-transparent py-2 font-mono text-[10px] text-[#FDFBF5] outline-none placeholder:text-[#FDFBF5]/30 focus:border-[#D2FF00]"
-      />
+      <input id={name} name={name} type={type} value={value} onChange={onChange} placeholder={placeholder} required className="w-full border-b border-[#FDFBF5]/30 bg-transparent py-2 font-mono text-[10px] text-[#FDFBF5] outline-none placeholder:text-[#FDFBF5]/30 focus:border-[#D2FF00]" />
 
     </div>
   );
 }
-
 
 /* ================================================= */
 /* SUCCESS */
 /* ================================================= */
 
 function SuccessState() {
-
   return (
     <div className="min-h-150 p-[5vw] lg:p-[4vw]">
 
@@ -656,7 +477,6 @@ function SuccessState() {
 
           </div>
 
-
           <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/40">
             <Reveal color="#D2FF00" delay={0.08}>
               01 / RECEIVED
@@ -665,7 +485,6 @@ function SuccessState() {
 
         </div>
 
-
         <div>
 
           <div className="font-mono text-[9px] tracking-[0.2em] text-[#FDFBF5]/50">
@@ -673,7 +492,6 @@ function SuccessState() {
               MESSAGE RECEIVED
             </Reveal>
           </div>
-
 
           <div className="mt-5 font-serif text-[clamp(52px,7vw,100px)] leading-[0.82] tracking-[-0.05em] text-[#FDFBF5]">
 
@@ -695,7 +513,6 @@ function SuccessState() {
 
         </div>
 
-
         <div className="flex items-end justify-between">
 
           <div className="max-w-60 font-mono text-[9px] leading-5 text-[#FDFBF5]/55">
@@ -713,7 +530,6 @@ function SuccessState() {
             </Reveal>
 
           </div>
-
 
           <div className="font-mono text-[8px] tracking-[0.18em] text-[#FDFBF5]/40">
 
