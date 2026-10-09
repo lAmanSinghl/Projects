@@ -1,69 +1,126 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../lib/api.js";
+
+const filters = ["ALL", "EASY", "MEDIUM", "HARD"];
 
 export default function Home() {
+  const [problems, setProblems] = useState([]);
+  const [query, setQuery] = useState("");
+  const [difficulty, setDifficulty] = useState("ALL");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadProblems() {
+      try {
+        const response = await apiFetch("/api/problems/");
+        const data = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(data.error || data.message || "Could not load problems.");
+        if (active) setProblems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (active) setError(err.message || "Could not connect to CodeArena.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    loadProblems();
+    return () => { active = false; };
+  }, []);
+
+  const filteredProblems = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return problems.filter((problem) => {
+      const matchesDifficulty = difficulty === "ALL" || problem.difficulty === difficulty;
+      const matchesQuery = !normalized || `${problem.title} ${problem.slug} ${problem.description || ""}`.toLowerCase().includes(normalized);
+      return matchesDifficulty && matchesQuery;
+    });
+  }, [problems, query, difficulty]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="app-shell">
+      <header className="topbar">
+        <Link className="brand" href="/" aria-label="CodeArena home">
+          <span className="brand-mark">C<span>A</span></span>
+          <span>codearena<span className="brand-dot">.</span></span>
+        </Link>
+        <nav className="top-nav" aria-label="Main navigation">
+          <a className="nav-link active" href="#problems">Problems</a>
+          <a className="nav-link" href="#about">Practice</a>
+        </nav>
+        <div className="top-actions">
+          <span className="status-indicator"><span /> Judge online</span>
+          <Link className="login-link" href="/login">Log in <span aria-hidden="true">↗</span></Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      <section className="hero">
+        <div className="hero-copy">
+          <div className="eyebrow"><span className="eyebrow-line" /> YOUR NEXT LEVEL STARTS HERE</div>
+          <h1>Think clearly.<br /><span>Code boldly.</span></h1>
+          <p>A focused space to sharpen your problem-solving skills, one submission at a time.</p>
+          <a className="hero-cta" href="#problems">Explore problems <span aria-hidden="true">↓</span></a>
         </div>
-      </main>
-    </div>
+        <div className="hero-art" aria-hidden="true">
+          <div className="orbit orbit-one" />
+          <div className="orbit orbit-two" />
+          <div className="hero-code">
+            <div className="code-window-top"><span /><span /><span /><b>solution.js</b></div>
+            <div className="code-lines">
+              <span><i>01</i><em>const</em> <strong>solve</strong> = (input) =&gt; {"{"}</span>
+              <span><i>02</i>  <em>return</em> input.<strong>map</strong>(x =&gt; x * 2);</span>
+              <span><i>03</i>{"}"}</span>
+              <span><i>04</i></span>
+              <span><i>05</i><small>// keep going.</small></span>
+            </div>
+          </div>
+          <div className="hero-badge"><span>✳</span> BUILD YOUR EDGE</div>
+          <div className="hero-index">01 <span>/</span> 07</div>
+        </div>
+      </section>
+
+      <section className="problems-section" id="problems">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow"><span className="eyebrow-line" /> THE PRACTICE ARENA</div>
+            <h2>Choose your <span>challenge.</span></h2>
+            <p>Build consistency. Learn patterns. Make every attempt count.</p>
+          </div>
+          <div className="problem-count"><strong>{problems.length.toString().padStart(2, "0")}</strong><span>PROBLEMS<br />AVAILABLE</span></div>
+        </div>
+
+        <div className="problem-toolbar">
+          <label className="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by title or keyword..." aria-label="Search problems" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <div className="filter-group" aria-label="Filter by difficulty">
+            {filters.map((item) => <button key={item} className={difficulty === item ? "filter-button selected" : "filter-button"} onClick={() => setDifficulty(item)}>{item === "ALL" ? "All levels" : item[0] + item.slice(1).toLowerCase()}</button>)}
+          </div>
+        </div>
+
+        {loading && <div className="state-panel"><span className="loading-spinner" /> Loading the arena...</div>}
+        {!loading && error && <div className="state-panel error-panel"><strong>Couldn’t load the problem set.</strong><p>{error}</p><button className="secondary-button" onClick={() => window.location.reload()}>Try again</button></div>}
+        {!loading && !error && filteredProblems.length === 0 && <div className="state-panel"><strong>No matching problems.</strong><p>Try another search or difficulty filter.</p></div>}
+        {!loading && !error && filteredProblems.length > 0 && (
+          <div className="problem-list">
+            <div className="problem-list-head"><span>PROBLEM</span><span>DIFFICULTY</span><span>OPEN</span></div>
+            {filteredProblems.map((problem, index) => (
+              <Link className="problem-row" href={`/problems/${encodeURIComponent(problem.slug)}`} key={problem.id ?? problem.slug}>
+                <span className="problem-main"><span className="problem-number">{String(index + 1).padStart(2, "0")}</span><span><strong>{problem.title}</strong><small>{problem.slug}</small></span></span>
+                <span><span className={`difficulty difficulty-${String(problem.difficulty || "easy").toLowerCase()}`}>{problem.difficulty || "Unrated"}</span></span>
+                <span className="problem-open" aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <footer className="site-footer" id="about"><span>© {new Date().getFullYear()} CodeArena</span><span>MADE FOR THE PROCESS, NOT JUST THE RESULT <b>✳</b></span><span>KEEP BUILDING <b>↗</b></span></footer>
+    </main>
   );
 }
