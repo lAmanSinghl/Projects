@@ -1,0 +1,107 @@
+
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
+
+# ==========================================
+# Environment variables and secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# ==========================================
+# Next.js
+# ==========================================
+.next/
+out/
+next-env.d.ts
+
+# ==========================================
+# Build output and caches
+# ==========================================
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# Testing
+# ==========================================
+.nyc_output/
+playwright-report/
+test-results/
+coverage/
+
+# ==========================================
+# Docker and local database data
+# ==========================================
+postgres_data/
+redis_data/
+docker-data/
+*.dump
+*.sql.gz
+*.backup
+
+# ==========================================
+# Operating systems
+# ==========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Editors and IDEs
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ==========================================
+# Local tools
+# ==========================================
+.vercel/
+.eslintcache
+
+# ==========================================
+# Temporary files
+# ==========================================
+tmp/
+temp/
+*.tmp
+*.temp

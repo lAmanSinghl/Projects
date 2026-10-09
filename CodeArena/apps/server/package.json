@@ -1,0 +1,25 @@
+{
+  "type": "module",
+  "scripts": {
+    "migrate": "node-pg-migrate",
+    "outbox": "node src/outbox/outbox.worker.js",
+    "worker": "node src/workers/submission.worker.js"
+  },
+  "dependencies": {
+    "argon2": "^0.45.1",
+    "bullmq": "^6.3.11",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "google-auth-library": "^11.2.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "node-pg-migrate": "^9.0.0",
+    "nodemailer": "^10.0.16",
+    "pg": "^8.23.0",
+    "rate-limiter-flexible": "^11.2.1",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  }
+}
