@@ -45,6 +45,28 @@ const storePendingRegistration = async ({
     return otp;
 };
 
+export const getCurrentUser = async (userId) => {
+    const result = await pool.query(
+        `SELECT
+            id,
+            username,
+            email,
+            display_name,
+            avatar_url,
+            bio,
+            role,
+            created_at
+         FROM users
+         WHERE id = $1`,
+        [userId]
+    );
+
+    if (result.rows.length === 0) {
+        throw new AppError("User not found", 404);
+    }
+
+    return result.rows[0];
+};
 
 export const registerUser = async ({ username, email, password }) => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -167,20 +189,28 @@ return cjson.encode(registration)
         );
     }
 
-    // Verify the data needed to create the account exists.
+    // Validate the pending registration before touching PostgreSQL.
     if (
         !registration.username ||
         !registration.email ||
-        !registration.passwordHash
+        !registration.passwordHash ||
+        registration.email !== normalizedEmail
     ) {
         throw new AppError(
-            "Registration data is incomplete. Please register again.",
+            "Registration data is incomplete or invalid. Please register again.",
             400
         );
     }
 
+    const client = await pool.connect();
+    let transactionOpen = false;
+
     try {
-        const userResult = await pool.query(
+        await client.query("BEGIN");
+        transactionOpen = true;
+
+        // Create the account.
+        const userResult = await client.query(
             `INSERT INTO users (
                 username,
                 email,
@@ -198,26 +228,71 @@ return cjson.encode(registration)
                 created_at`,
             [
                 registration.username,
-                registration.email,
+                normalizedEmail,
                 registration.passwordHash
             ]
         );
 
-        // Delete pending registration only after successful insertion.
+        const user = userResult.rows[0];
+
+        // Create the same kind of session as normal password login.
+        const accessToken = createAccessToken(user);
+        const refreshToken = generateRefreshToken();
+        const refreshTokenHash = hashToken(refreshToken);
+        const familyId = crypto.randomUUID();
+
+        await client.query(
+            `INSERT INTO refresh_tokens (
+                user_id,
+                token_hash,
+                family_id,
+                expires_at
+            )
+            VALUES (
+                $1,
+                $2,
+                $3,
+                CURRENT_TIMESTAMP + INTERVAL '30 days'
+            )`,
+            [
+                user.id,
+                refreshTokenHash,
+                familyId
+            ]
+        );
+
+        // Commit the account and its session together.
+        await client.query("COMMIT");
+        transactionOpen = false;
+
+        // Best-effort cleanup after the database commit.
+        // Redis TTL remains the fallback if deletion fails.
         try {
             await redis.del(key);
         } catch {
-            // The Redis TTL will eventually remove the pending data.
+            // Do not turn a successful account creation into a failed response.
         }
 
-        return userResult.rows[0];
+        return {
+            user,
+            accessToken,
+            refreshToken
+        };
     } catch (error) {
+        if (transactionOpen) {
+            try {
+                await client.query("ROLLBACK");
+            } catch {
+                // Preserve the original error.
+            }
+        }
+
         if (error.code === "23505") {
-            // Best-effort cleanup; don't let Redis errors hide the DB error.
+            // Best-effort cleanup for a duplicate account.
             try {
                 await redis.del(key);
             } catch {
-                // The Redis TTL will eventually remove the pending data.
+                // Preserve the original database error handling.
             }
 
             throw new AppError(
@@ -226,10 +301,13 @@ return cjson.encode(registration)
             );
         }
 
-        // Keep pending registration if PostgreSQL fails for another reason.
+        // Keep pending registration for retryable database failures.
         throw error;
+    } finally {
+        client.release();
     }
 };
+
 
 
 export const loginUser = async ({ identifier, password }) => {

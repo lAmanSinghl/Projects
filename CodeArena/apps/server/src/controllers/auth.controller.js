@@ -5,7 +5,8 @@ import {
     refreshAccessToken,
     logoutUser,
     beginGoogleLogin,
-    completeGoogleRegistration
+    completeGoogleRegistration,
+    getCurrentUser
 } from "../services/auth.service.js";
 
 import {
@@ -23,9 +24,13 @@ import {
     createGoogleAuthorizationUrl,
     googleOAuthClient
 } from "../utils/googleOAuth.js";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
-export const getMe = (req, res) => {
-    res.status(200).json(req.user);
+
+export const getMe = async (req, res) => {
+    const user = await getCurrentUser(req.user.id);
+
+    res.status(200).json({ user });
 };
 
 export const login = async (req, res) => {
@@ -57,11 +62,20 @@ export const register = async (req, res) => {
 export const verifyEmail = async (req, res) => {
     const validatedData = verifyEmailSchema.parse(req.body);
 
-    const user = await verifyRegistrationOtp(validatedData);
+    const result = await verifyRegistrationOtp(validatedData);
+
+    res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/"
+    });
 
     res.status(201).json({
         message: "Email verified and account created successfully",
-        user
+        user: result.user,
+        accessToken: result.accessToken
     });
 };
 
@@ -122,12 +136,10 @@ export const startGoogleOAuth = (req, res) => {
     res.redirect(302, authorizationUrl);
 };
 
-
 export const googleOAuthCallback = async (req, res) => {
     const { code, state, error } = req.query;
     const expectedState = req.cookies.googleOAuthState;
 
-    // Clear the one-time state cookie using the same path.
     res.clearCookie("googleOAuthState", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -151,14 +163,12 @@ export const googleOAuthCallback = async (req, res) => {
         throw new AppError("Google authorization code is missing", 400);
     }
 
-    // Exchange Google's one-time authorization code.
     const { tokens } = await googleOAuthClient.getToken(code);
 
     if (!tokens.id_token) {
         throw new AppError("Google did not return an ID token", 401);
     }
 
-    // Verify the ID token's signature, audience, and validity.
     const ticket = await googleOAuthClient.verifyIdToken({
         idToken: tokens.id_token,
         audience: process.env.GOOGLE_CLIENT_ID
@@ -177,7 +187,7 @@ export const googleOAuthCallback = async (req, res) => {
         );
     }
 
-    // Temporary development response: account linking comes next.
+    // This was missing: determine whether the user is new or returning.
     const result = await beginGoogleLogin({
         googleId: payload.sub,
         email: payload.email,
@@ -186,39 +196,29 @@ export const googleOAuthCallback = async (req, res) => {
         picture: payload.picture
     });
 
+    // New Google user: ask them to choose a username.
     if (result.status === "registration_required") {
-        res.cookie(
-            "googleRegistrationToken",
-            result.registrationToken,
-            {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 10 * 60 * 1000,
-                path: "/api/auth/google/register"
-            }
-        );
-
-        return res.status(200).json({
-            status: "registration_required",
-            message: "Choose a username to finish creating your account.",
-            profile: result.profile
+        res.cookie("googleRegistrationToken", result.registrationToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 10 * 60 * 1000,
+            path: "/api/auth/google/register"
         });
+
+        return res.redirect(302, `${FRONTEND_URL}/google/register`);
     }
 
-    // Existing Google-linked account: create a normal login session.
+    // Returning Google user: establish their existing session.
     res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
-        secure: false, // true in production with HTTPS
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60 * 1000
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/"
     });
 
-    return res.status(200).json({
-        status: "authenticated",
-        user: result.user,
-        accessToken: result.accessToken
-    });
+    return res.redirect(302, FRONTEND_URL);;
 };
 
 
