@@ -836,3 +836,24 @@ export const completeGoogleRegistration = async ({
         client.release();
     }
 };
+
+export const getPublicUserByUsername = async (username) => {
+    const result = await pool.query(
+        `SELECT
+            id,
+            username,
+            display_name,
+            avatar_url,
+            bio,
+            created_at
+         FROM users
+         WHERE username = $1`,
+        [username]
+    );
+
+    if (result.rows.length === 0) {
+        throw new AppError("User not found", 404);
+    }
+
+    return result.rows[0];
+};

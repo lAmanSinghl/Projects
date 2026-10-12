@@ -82,6 +82,7 @@ export const getSubmissionById = async (
     return result.rows[0];
 };
 
+
 export const getUserSubmissions = async ({
     userId,
     page,
@@ -91,25 +92,23 @@ export const getUserSubmissions = async ({
 
     const result = await pool.query(
         `SELECT
-            id,
-            problem_id,
-            language,
-            status,
-            verdict,
-            created_at,
-            started_at,
-            completed_at,
-            execution_time_ms
-         FROM submissions
-         WHERE user_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2
-         OFFSET $3`,
-        [
-            userId,
-            limit,
-            offset
-        ]
+            s.id,
+            s.problem_id,
+            p.title AS problem_title,
+            p.slug AS problem_slug,
+            s.language,
+            s.status,
+            s.verdict,
+            s.created_at,
+            s.started_at,
+            s.completed_at,
+            s.execution_time_ms
+         FROM submissions s
+         LEFT JOIN problems p ON p.id = s.problem_id
+         WHERE s.user_id = $1
+         ORDER BY s.created_at DESC, s.id DESC
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
     );
 
     const countResult = await pool.query(
@@ -129,5 +128,34 @@ export const getUserSubmissions = async ({
             total,
             totalPages: Math.ceil(total / limit)
         }
+    };
+};
+
+export const getUserSubmissionStats = async (userId) => {
+    const result = await pool.query(
+        `SELECT
+            COUNT(*)::integer AS total_submissions,
+            COUNT(*) FILTER (
+                WHERE verdict = 'ACCEPTED'
+            )::integer AS accepted_submissions,
+            COUNT(DISTINCT problem_id) FILTER (
+                WHERE verdict = 'ACCEPTED'
+            )::integer AS solved_problems
+         FROM submissions
+         WHERE user_id = $1`,
+        [userId]
+    );
+
+    const stats = result.rows[0];
+    const total = stats.total_submissions;
+    const accepted = stats.accepted_submissions;
+
+    return {
+        totalSubmissions: total,
+        acceptedSubmissions: accepted,
+        solvedProblems: stats.solved_problems,
+        acceptanceRate: total === 0
+            ? 0
+            : Number(((accepted / total) * 100).toFixed(1))
     };
 };

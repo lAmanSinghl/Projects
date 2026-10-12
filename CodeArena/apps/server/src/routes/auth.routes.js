@@ -10,7 +10,8 @@ import {
     verifyEmail,
     startGoogleOAuth,
     googleOAuthCallback,
-    completeGoogleRegistrationController
+    completeGoogleRegistrationController,
+    getPublicUserController
 } from "../controllers/auth.controller.js";
 
 import authMiddleware from "../middleware/auth.middleware.js";
@@ -22,6 +23,8 @@ import {
 } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
+
+router.get("/public/:username", getPublicUserController);
 
 // Authenticated routes
 router.get("/me", authMiddleware, getMe);

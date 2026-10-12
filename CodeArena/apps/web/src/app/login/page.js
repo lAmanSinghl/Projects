@@ -4,40 +4,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { login } from "../../lib/auth.js";
-import { useTheme } from "../../components/ThemeProvider";
-
-function BrandMark() {
-    return (
-        <span className="auth-brand-mark" aria-hidden="true">
-            <span />
-            <span />
-        </span>
-    );
-}
-
-function ThemeIcon({ theme }) {
-    return (
-        <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-        >
-            {theme === "dark" ? (
-                <>
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
-                </>
-            ) : (
-                <path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5 8.8 8.8 0 1 0 20.5 14.2Z" />
-            )}
-        </svg>
-    );
-}
+import SiteNavbar from "../../components/app/SiteNavbar";
 
 function EyeIcon({ visible }) {
     return (
@@ -91,7 +60,89 @@ function GoogleIcon() {
 
 export default function LoginPage() {
     const router = useRouter();
-    const { theme, toggleTheme } = useTheme();
+
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function checkSession() {
+            try {
+                let token = localStorage.getItem("accessToken");
+
+                // First, check whether the existing access token is valid.
+                if (token) {
+                    const meResponse = await fetch(
+                        "http://localhost:5000/api/auth/me",
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                            },
+                            credentials: "include",
+                        }
+                    );
+
+                    if (meResponse.ok) {
+                        if (!cancelled) {
+                            router.replace("/");
+                            router.refresh();
+                        }
+                        return;
+                    }
+                }
+
+                // The access token may be missing or expired.
+                // Try restoring the session with the refresh-token cookie.
+                const refreshResponse = await fetch(
+                    "http://localhost:5000/api/auth/refresh",
+                    {
+                        method: "POST",
+                        credentials: "include",
+                    }
+                );
+
+                if (!refreshResponse.ok) {
+                    localStorage.removeItem("accessToken");
+                    return;
+                }
+
+                const data = await refreshResponse.json();
+
+                if (!data.accessToken) {
+                    localStorage.removeItem("accessToken");
+                    return;
+                }
+
+                localStorage.setItem("accessToken", data.accessToken);
+
+                // Confirm the refreshed token before redirecting.
+                const meResponse = await fetch(
+                    "http://localhost:5000/api/auth/me",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${data.accessToken}`,
+                        },
+                        credentials: "include",
+                    }
+                );
+
+                if (meResponse.ok && !cancelled) {
+                    router.replace("/");
+                    router.refresh();
+                } else if (!meResponse.ok) {
+                    localStorage.removeItem("accessToken");
+                }
+            } catch (error) {
+                // Keep the login page available if the backend is unreachable.
+                console.error("Session check failed:", error);
+            }
+        }
+
+        checkSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
 
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
@@ -100,7 +151,7 @@ export default function LoginPage() {
     const [submitting, setSubmitting] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
 
-    // Reset the Google button when this page is restored with Back/Forward.
+    // Reset the Google button when the page is restored with Back/Forward.
     useEffect(() => {
         function handlePageShow() {
             setGoogleLoading(false);
@@ -135,7 +186,7 @@ export default function LoginPage() {
         } catch (err) {
             setError(
                 err?.message ||
-                    "Unable to sign in. Please check your credentials and try again."
+                "Unable to sign in. Please check your credentials and try again."
             );
         } finally {
             setSubmitting(false);
@@ -145,8 +196,7 @@ export default function LoginPage() {
     function handleGoogleLogin() {
         setError("");
 
-        const googleAuthUrl =
-            process.env.NEXT_PUBLIC_GOOGLE_AUTH_URL;
+        const googleAuthUrl = process.env.NEXT_PUBLIC_GOOGLE_AUTH_URL;
 
         if (!googleAuthUrl) {
             setError(
@@ -163,40 +213,7 @@ export default function LoginPage() {
         <main className="auth-page">
             <div className="auth-background-grid" aria-hidden="true" />
 
-            <header className="auth-header">
-                <Link
-                    href="/"
-                    className="auth-brand"
-                    aria-label="CodeArena home"
-                >
-                    <BrandMark />
-                    <span>
-                        codearena<span className="auth-brand-period">.</span>
-                    </span>
-                </Link>
-
-                <div className="auth-header-right">
-                    <span className="auth-header-caption">
-                        New to CodeArena?
-                    </span>
-
-                    <Link href="/register" className="auth-header-link">
-                        Create account <span aria-hidden="true">↗</span>
-                    </Link>
-
-                    <button
-                        type="button"
-                        className="auth-theme-button"
-                        onClick={toggleTheme}
-                        aria-label={`Switch to ${
-                            theme === "dark" ? "light" : "dark"
-                        } theme`}
-                        title="Change theme"
-                    >
-                        <ThemeIcon theme={theme} />
-                    </button>
-                </div>
-            </header>
+            <SiteNavbar />
 
             <section className="auth-main">
                 <div className="auth-intro">
@@ -262,7 +279,10 @@ export default function LoginPage() {
                     <div className="auth-card">
                         <div className="auth-card-heading">
                             <div className="auth-card-icon">
-                                <BrandMark />
+                                <span className="auth-brand-mark" aria-hidden="true">
+                                    <span />
+                                    <span />
+                                </span>
                             </div>
 
                             <span className="auth-card-label">
@@ -273,10 +293,7 @@ export default function LoginPage() {
                             <p>Pick up where you left off.</p>
                         </div>
 
-                        <form
-                            className="auth-form"
-                            onSubmit={handleSubmit}
-                        >
+                        <form className="auth-form" onSubmit={handleSubmit}>
                             <div className="auth-field">
                                 <label htmlFor="identifier">
                                     Email or username
@@ -293,17 +310,13 @@ export default function LoginPage() {
                                         setIdentifier(event.target.value)
                                     }
                                     required
-                                    disabled={
-                                        submitting || googleLoading
-                                    }
+                                    disabled={submitting || googleLoading}
                                 />
                             </div>
 
                             <div className="auth-field">
                                 <div className="auth-label-row">
-                                    <label htmlFor="password">
-                                        Password
-                                    </label>
+                                    <label htmlFor="password">Password</label>
 
                                     <Link
                                         href="/forgot-password"
@@ -317,11 +330,7 @@ export default function LoginPage() {
                                     <input
                                         id="password"
                                         name="password"
-                                        type={
-                                            showPassword
-                                                ? "text"
-                                                : "password"
-                                        }
+                                        type={showPassword ? "text" : "password"}
                                         autoComplete="current-password"
                                         placeholder="Enter your password"
                                         value={password}
@@ -329,23 +338,17 @@ export default function LoginPage() {
                                             setPassword(event.target.value)
                                         }
                                         required
-                                        disabled={
-                                            submitting || googleLoading
-                                        }
+                                        disabled={submitting || googleLoading}
                                     />
 
                                     <button
                                         type="button"
                                         className="auth-password-toggle"
                                         onClick={() =>
-                                            setShowPassword(
-                                                (visible) => !visible
-                                            )
+                                            setShowPassword((visible) => !visible)
                                         }
                                         aria-label={
-                                            showPassword
-                                                ? "Hide password"
-                                                : "Show password"
+                                            showPassword ? "Hide password" : "Show password"
                                         }
                                         aria-pressed={showPassword}
                                     >
@@ -367,20 +370,14 @@ export default function LoginPage() {
                                 disabled={submitting || googleLoading}
                             >
                                 <span>
-                                    {submitting
-                                        ? "Signing you in…"
-                                        : "Sign in"}
+                                    {submitting ? "Signing you in…" : "Sign in"}
                                 </span>
 
                                 {!submitting && (
-                                    <span className="auth-submit-arrow">
-                                        ↗
-                                    </span>
+                                    <span className="auth-submit-arrow">↗</span>
                                 )}
 
-                                {submitting && (
-                                    <span className="auth-spinner" />
-                                )}
+                                {submitting && <span className="auth-spinner" />}
                             </button>
                         </form>
 
@@ -425,13 +422,7 @@ export default function LoginPage() {
                             strokeLinejoin="round"
                             aria-hidden="true"
                         >
-                            <rect
-                                x="4"
-                                y="8"
-                                width="12"
-                                height="9"
-                                rx="2"
-                            />
+                            <rect x="4" y="8" width="12" height="9" rx="2" />
                             <path d="M7 8V5a3 3 0 0 1 6 0v3" />
                         </svg>
 

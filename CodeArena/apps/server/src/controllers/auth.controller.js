@@ -6,7 +6,8 @@ import {
     logoutUser,
     beginGoogleLogin,
     completeGoogleRegistration,
-    getCurrentUser
+    getCurrentUser,
+    getPublicUserByUsername
 } from "../services/auth.service.js";
 
 import {
@@ -221,7 +222,6 @@ export const googleOAuthCallback = async (req, res) => {
     return res.redirect(302, FRONTEND_URL);;
 };
 
-
 export const completeGoogleRegistrationController = async (req, res) => {
     const { username } = googleRegistrationSchema.parse(req.body);
 
@@ -259,3 +259,12 @@ export const completeGoogleRegistrationController = async (req, res) => {
         accessToken: result.accessToken
     });
 };
+
+export const getPublicUserController = async (req, res) => {
+    const user = await getPublicUserByUsername(
+        req.params.username
+    );
+
+    res.status(200).json({ user });
+};
+

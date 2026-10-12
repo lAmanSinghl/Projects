@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser, verifyEmail } from "../../lib/auth.js";
@@ -91,6 +91,90 @@ function GoogleIcon() {
 
 export default function RegisterPage() {
     const router = useRouter();
+
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function checkSession() {
+            try {
+                let token = localStorage.getItem("accessToken");
+
+                // First, check whether the existing access token is valid.
+                if (token) {
+                    const meResponse = await fetch(
+                        "http://localhost:5000/api/auth/me",
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                            },
+                            credentials: "include",
+                        }
+                    );
+
+                    if (meResponse.ok) {
+                        if (!cancelled) {
+                            router.replace("/");
+                            router.refresh();
+                        }
+                        return;
+                    }
+                }
+
+                // The access token may be missing or expired.
+                // Try restoring the session with the refresh-token cookie.
+                const refreshResponse = await fetch(
+                    "http://localhost:5000/api/auth/refresh",
+                    {
+                        method: "POST",
+                        credentials: "include",
+                    }
+                );
+
+                if (!refreshResponse.ok) {
+                    localStorage.removeItem("accessToken");
+                    return;
+                }
+
+                const data = await refreshResponse.json();
+
+                if (!data.accessToken) {
+                    localStorage.removeItem("accessToken");
+                    return;
+                }
+
+                localStorage.setItem("accessToken", data.accessToken);
+
+                // Confirm the refreshed token before redirecting.
+                const meResponse = await fetch(
+                    "http://localhost:5000/api/auth/me",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${data.accessToken}`,
+                        },
+                        credentials: "include",
+                    }
+                );
+
+                if (meResponse.ok && !cancelled) {
+                    router.replace("/");
+                    router.refresh();
+                } else if (!meResponse.ok) {
+                    localStorage.removeItem("accessToken");
+                }
+            } catch (error) {
+                // Keep the login page available if the backend is unreachable.
+                console.error("Session check failed:", error);
+            }
+        }
+
+        checkSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
+
     const { theme, toggleTheme } = useTheme();
 
     const [step, setStep] = useState("register");
@@ -146,7 +230,7 @@ export default function RegisterPage() {
         } catch (err) {
             setError(
                 err?.message ||
-                    "We couldn't start your registration. Please try again."
+                "We couldn't start your registration. Please try again."
             );
         } finally {
             setSubmitting(false);
@@ -184,7 +268,7 @@ export default function RegisterPage() {
         } catch (err) {
             setError(
                 err?.message ||
-                    "Email verification failed. Check your code and try again."
+                "Email verification failed. Check your code and try again."
             );
         } finally {
             setSubmitting(false);
@@ -240,9 +324,8 @@ export default function RegisterPage() {
                         type="button"
                         className="auth-theme-button"
                         onClick={toggleTheme}
-                        aria-label={`Switch to ${
-                            theme === "dark" ? "light" : "dark"
-                        } theme`}
+                        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"
+                            } theme`}
                         title="Change theme"
                     >
                         <ThemeIcon theme={theme} />
@@ -612,7 +695,7 @@ export default function RegisterPage() {
 
                         {step === "register" && (
                             <>
-                                
+
 
                                 <div className="auth-or-divider">
                                     <span />
