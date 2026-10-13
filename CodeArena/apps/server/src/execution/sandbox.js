@@ -1,11 +1,139 @@
+
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const COMPILE_TIMEOUT_MS = 10000;
-const EXECUTION_TIMEOUT_MS = 5000;
-const MAX_OUTPUT_BYTES = 1024 * 1024; // 1 MB
+const COMPILE_TIMEOUT_MS = 10_000;
+const EXECUTION_TIMEOUT_MS = 5_000;
+const MAX_OUTPUT_BYTES = 1024 * 1024;
+
+const runProcess = (
+    command,
+    args,
+    {
+        timeoutMs,
+        input,
+        maxOutputBytes = MAX_OUTPUT_BYTES,
+        onTimeout,
+        onOutputLimit,
+    }
+) =>
+    new Promise((resolve, reject) => {
+
+        const child = spawn(command, args, {
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+
+        const stdoutChunks = [];
+        const stderrChunks = [];
+
+        let outputBytes = 0;
+        let timedOut = false;
+        let outputLimitExceeded = false;
+        let settled = false;
+
+        const finish = (result) => {
+            if (settled) return;
+
+            settled = true;
+            clearTimeout(timeout);
+
+            resolve({
+                stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+                stderr: Buffer.concat(stderrChunks).toString("utf8"),
+                ...result,
+            });
+        };
+
+        const stopProcess = (reason) => {
+            
+            if (settled) return;
+
+            if (reason === "TIME_LIMIT") {
+                timedOut = true;
+                Promise.resolve(onTimeout?.()).catch(() => {});
+            } else {
+                outputLimitExceeded = true;
+                Promise.resolve(onOutputLimit?.()).catch(() => {});
+            }
+
+            child.kill("SIGTERM");
+        };
+
+        const timeout = setTimeout(() => {
+            stopProcess("TIME_LIMIT");
+        }, timeoutMs);
+
+        const collectOutput = (stream, chunks) => {
+            stream.on("data", (chunk) => {
+                if (settled || timedOut || outputLimitExceeded) {
+                    return;
+                }
+
+                outputBytes += chunk.byteLength;
+
+                if (outputBytes > maxOutputBytes) {
+                    stopProcess("OUTPUT_LIMIT");
+                    return;
+                }
+
+                chunks.push(chunk);
+            });
+        };
+
+        collectOutput(child.stdout, stdoutChunks);
+        collectOutput(child.stderr, stderrChunks);
+
+        child.once("error", (error) => {
+            if (settled) return;
+
+            settled = true;
+            clearTimeout(timeout);
+            reject(error);
+        });
+
+        child.once("close", (exitCode, signal) => {
+            finish({
+                exitCode,
+                signal,
+                timedOut,
+                outputLimitExceeded,
+            });
+        });
+
+        if (input !== undefined) {
+            child.stdin.on("error", () => {});
+            child.stdin.end(input);
+        } else {
+            child.stdin.end();
+        }
+    });
+
+const killContainer = async (containerId) => {
+    if (!containerId) return;
+
+    try {
+        await execFileAsync("docker", ["kill", containerId]);
+    } catch {
+        // The container may already have stopped.
+    }
+};
+
+const inspectMemoryLimit = async (containerId) => {
+    try {
+        const { stdout } = await execFileAsync("docker", [
+            "inspect",
+            "--format={{.State.OOMKilled}}",
+            containerId,
+        ]);
+
+        return stdout.trim() === "true";
+    } catch {
+        // An inspection failure is not proof of an OOM kill.
+        return false;
+    }
+};
 
 
 export const runSandbox = async ({
@@ -13,435 +141,205 @@ export const runSandbox = async ({
     sourceDir,
     compileCommand,
     runCommand,
-    testCases = []
+    testCases = [],
+    onTestCaseResult,
 }) => {
     let containerId;
 
     try {
-        // --------------------------------------------------
-        // 1. CREATE CONTAINER
-        // --------------------------------------------------
-
-        const { stdout: createOutput } = await execFileAsync("docker", [
-            "create",
-            "-i",
-
-            // Resource limits
-            "--memory=128m",
-            "--cpus=0.5",
-            "--pids-limit=64",
-
-            // Security
-            "--cap-drop=ALL",
-            "--security-opt=no-new-privileges",
-
-            // No internet access
-            "--network=none",
-
-            // Mount submitted source code
-            "--mount",
-            `type=bind,source=${sourceDir},target=/tmp/codearena,readonly`,
-
-            image,
-
-            // Keep container alive
-            "sleep",
-            "300"
-        ]);
+        const { stdout: createOutput } = await execFileAsync(
+            "docker",
+            [
+                "create",
+                "-i",
+                "--memory=128m",
+                "--cpus=0.5",
+                "--pids-limit=64",
+                "--cap-drop=ALL",
+                "--security-opt=no-new-privileges",
+                "--network=none",
+                "--mount",
+                `type=bind,source=${sourceDir},target=/tmp/codearena,readonly`,
+                image,
+                "sleep",
+                "300",
+            ]
+        );
 
         containerId = createOutput.trim();
 
+        if (!containerId) {
+            throw new Error("Docker did not return a container ID");
+        }
 
-        // --------------------------------------------------
-        // 2. START CONTAINER
-        // --------------------------------------------------
+        await execFileAsync("docker", ["start", containerId]);
 
-        await execFileAsync("docker", [
-            "start",
-            containerId
-        ]);
-
-
-        // --------------------------------------------------
-        // 3. COMPILE ONCE
-        // --------------------------------------------------
-
+        // Compile once for the entire submission.
         if (compileCommand) {
-            const compileProcess = spawn(
+            const compilation = await runProcess(
                 "docker",
-                [
-                    "exec",
-                    containerId,
-                    ...compileCommand
-                ]
-            );
-
-            let compileStdout = "";
-            let compileStderr = "";
-
-            compileProcess.stdout.on("data", (data) => {
-                compileStdout += data.toString();
-            });
-
-            compileProcess.stderr.on("data", (data) => {
-                compileStderr += data.toString();
-            });
-
-            let compilationTimedOut = false;
-
-            const compileTimeout = setTimeout(async () => {
-                compilationTimedOut = true;
-
-                compileProcess.kill("SIGTERM");
-
-                try {
-                    await execFileAsync("docker", [
-                        "kill",
-                        containerId
-                    ]);
-                } catch {}
-            }, COMPILE_TIMEOUT_MS);
-
-
-            const compileExitCode = await new Promise(
-                (resolve, reject) => {
-
-                    compileProcess.on(
-                        "close",
-                        resolve
-                    );
-
-                    compileProcess.on(
-                        "error",
-                        reject
-                    );
+                ["exec", containerId, ...compileCommand],
+                {
+                    timeoutMs: COMPILE_TIMEOUT_MS,
+                    onTimeout: () => killContainer(containerId),
                 }
             );
 
-            clearTimeout(compileTimeout);
-
-
-            // Compilation timeout
-            if (compilationTimedOut) {
+            if (compilation.timedOut) {
                 return {
                     status: "COMPILATION_TIMEOUT",
-                    stdout: compileStdout,
-                    stderr: compileStderr
+                    stdout: compilation.stdout,
+                    stderr: compilation.stderr,
+                    exitCode: compilation.exitCode,
+                    results: [],
                 };
             }
 
+            if (compilation.outputLimitExceeded) {
+                await killContainer(containerId);
 
-            // Compilation error
-            if (compileExitCode !== 0) {
+                return {
+                    status: "OUTPUT_LIMIT",
+                    results: [],
+                };
+            }
+
+            if (compilation.exitCode !== 0) {
                 return {
                     status: "COMPILATION_ERROR",
-                    stdout: compileStdout,
-                    stderr: compileStderr,
-                    exitCode: compileExitCode
+                    stdout: compilation.stdout,
+                    stderr: compilation.stderr,
+                    exitCode: compilation.exitCode,
+                    results: [],
                 };
             }
         }
 
-
-        // --------------------------------------------------
-        // 4. RUN TEST CASES
-        // --------------------------------------------------
-
         const results = [];
 
-        for (const testCase of testCases) {
+        for (let index = 0; index < testCases.length; index++) {
+            const testCase = testCases[index];
 
-            const child = spawn(
+            const execution = await runProcess(
                 "docker",
-                [
-                    "exec",
-                    "-i",
-                    containerId,
-                    ...runCommand
-                ]
+                ["exec", "-i", containerId, ...runCommand],
+                {
+                    timeoutMs: EXECUTION_TIMEOUT_MS,
+                    input: testCase.input || "",
+                    onTimeout: () => killContainer(containerId),
+                    onOutputLimit: () => killContainer(containerId),
+                }
             );
 
-
-            // ----------------------------------------------
-            // Output tracking
-            // ----------------------------------------------
-
-            const stdoutChunks = [];
-            const stderrChunks = [];
-
-            let stdoutBytes = 0;
-            let stderrBytes = 0;
-
-            let outputLimitExceeded = false;
-            let timedOut = false;
-            let terminating = false;
-
-
-            // ----------------------------------------------
-            // Kill everything related to this execution
-            // ----------------------------------------------
-
-            const terminateExecution = async () => {
-
-                if (terminating) {
-                    return;
-                }
-
-                terminating = true;
-
-                try {
-                    child.kill("SIGTERM");
-                } catch {}
-
-                try {
-                    await execFileAsync("docker", [
-                        "kill",
-                        containerId
-                    ]);
-                } catch {}
+            const testResult = {
+                testCaseId: testCase.id,
+                testCaseIndex: index,
+                stdout: execution.stdout,
+                stderr: execution.stderr,
+                exitCode: execution.exitCode,
             };
 
+            if (execution.outputLimitExceeded) {
+                const result = {
+                    ...testResult,
+                    status: "OUTPUT_LIMIT",
+                };
 
-            // ----------------------------------------------
-            // STDOUT
-            // ----------------------------------------------
-
-            child.stdout.on("data", (data) => {
-
-                if (outputLimitExceeded) {
-                    return;
-                }
-
-                const chunkSize = data.byteLength;
-
-                stdoutBytes += chunkSize;
-
-
-                // Output exceeded 1 MB
-                if (stdoutBytes > MAX_OUTPUT_BYTES) {
-
-                    outputLimitExceeded = true;
-
-                    // Don't keep accumulating unlimited output.
-                    stdoutChunks.length = 0;
-
-                    terminateExecution();
-
-                    return;
-                }
-
-
-                stdoutChunks.push(data);
-            });
-
-
-            // ----------------------------------------------
-            // STDERR
-            // ----------------------------------------------
-
-            child.stderr.on("data", (data) => {
-
-                if (outputLimitExceeded) {
-                    return;
-                }
-
-                const chunkSize = data.byteLength;
-
-                stderrBytes += chunkSize;
-
-
-                // Output exceeded 1 MB
-                if (stderrBytes > MAX_OUTPUT_BYTES) {
-
-                    outputLimitExceeded = true;
-
-                    stderrChunks.length = 0;
-
-                    terminateExecution();
-
-                    return;
-                }
-
-
-                stderrChunks.push(data);
-            });
-
-
-            // ----------------------------------------------
-            // SEND INPUT
-            // ----------------------------------------------
-
-            child.stdin.write(testCase.input || "");
-            child.stdin.end();
-
-
-            // ----------------------------------------------
-            // EXECUTION TIMEOUT
-            // ----------------------------------------------
-
-            const timeout = setTimeout(() => {
-
-                if (outputLimitExceeded) {
-                    return;
-                }
-
-                timedOut = true;
-
-                terminateExecution();
-
-            }, EXECUTION_TIMEOUT_MS);
-
-
-            // ----------------------------------------------
-            // WAIT FOR PROCESS
-            // ----------------------------------------------
-
-            const exitCode = await new Promise(
-                (resolve, reject) => {
-
-                    child.on(
-                        "close",
-                        resolve
-                    );
-
-                    child.on(
-                        "error",
-                        reject
-                    );
-                }
-            );
-
-
-            clearTimeout(timeout);
-
-
-            // ----------------------------------------------
-            // OUTPUT LIMIT
-            // ----------------------------------------------
-
-            if (outputLimitExceeded) {
+                results.push(result);
+                await onTestCaseResult?.(result);
 
                 return {
                     status: "OUTPUT_LIMIT",
-                    results
+                    results,
                 };
             }
 
+            if (execution.timedOut) {
+                const result = {
+                    ...testResult,
+                    status: "TIME_LIMIT",
+                };
 
-            // ----------------------------------------------
-            // TIME LIMIT
-            // ----------------------------------------------
-
-            if (timedOut) {
+                results.push(result);
+                await onTestCaseResult?.(result);
 
                 return {
                     status: "TIME_LIMIT",
-                    results
+                    results,
                 };
             }
 
+            if (await inspectMemoryLimit(containerId)) {
+                const result = {
+                    ...testResult,
+                    status: "MEMORY_LIMIT",
+                };
 
-            // ----------------------------------------------
-            // MEMORY LIMIT
-            // ----------------------------------------------
-
-            const {
-                stdout: oomResult
-            } = await execFileAsync(
-                "docker",
-                [
-                    "inspect",
-                    "--format={{.State.OOMKilled}}",
-                    containerId
-                ]
-            );
-
-
-            if (oomResult.trim() === "true") {
+                results.push(result);
+                await onTestCaseResult?.(result);
 
                 return {
                     status: "MEMORY_LIMIT",
-                    results
+                    results,
                 };
             }
 
+            if (execution.exitCode !== 0) {
+                const result = {
+                    ...testResult,
+                    status: "RUNTIME_ERROR",
+                };
 
-            // ----------------------------------------------
-            // RUNTIME ERROR
-            // ----------------------------------------------
-
-            const stdout = Buffer
-                .concat(stdoutChunks)
-                .toString("utf8");
-
-            const stderr = Buffer
-                .concat(stderrChunks)
-                .toString("utf8");
-
-
-            if (exitCode !== 0) {
+                results.push(result);
+                await onTestCaseResult?.(result);
 
                 return {
                     status: "RUNTIME_ERROR",
                     results,
-                    stdout,
-                    stderr,
-                    exitCode
                 };
             }
 
+            const result = {
+                ...testResult,
+                status: "EXECUTED",
+            };
 
-            // ----------------------------------------------
-            // SUCCESSFUL TEST CASE
-            // ----------------------------------------------
+            results.push(result);
 
-            results.push({
-                stdout,
-                stderr
-            });
+            // Judge immediately after each successful execution.
+            // false means stop without executing the next case.
+            const shouldContinue = await onTestCaseResult?.(result);
+
+            if (shouldContinue === false) {
+                return {
+                    status: "STOPPED",
+                    results,
+                    stoppedEarly: true,
+                };
+            }
         }
-
-
-        // --------------------------------------------------
-        // 5. ALL TEST CASES COMPLETED
-        // --------------------------------------------------
 
         return {
             status: "COMPLETED",
-            results
+            results,
         };
-
-
     } catch (error) {
-
         return {
             status: "RUNTIME_ERROR",
-            stdout: error.stdout || "",
-            stderr: error.stderr || "",
-            exitCode: error.code
+            results: [],
+            stderr: error.message,
         };
-
-
     } finally {
-
-        // --------------------------------------------------
-        // 6. ALWAYS DELETE CONTAINER
-        // --------------------------------------------------
-
         if (containerId) {
-
             try {
-
-                await execFileAsync(
-                    "docker",
-                    [
-                        "rm",
-                        "-f",
-                        containerId
-                    ]
-                );
-
-            } catch {}
+                await execFileAsync("docker", [
+                    "rm",
+                    "-f",
+                    containerId,
+                ]);
+            } catch {
+                // Do not replace the execution result with a cleanup error.
+            }
         }
     }
 };

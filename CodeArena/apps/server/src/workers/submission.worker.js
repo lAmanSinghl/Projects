@@ -1,34 +1,34 @@
 import { Worker } from "bullmq";
+
 import pool from "../db.js";
 import { publishSubmissionEvent } from "../websocket/redisPublisher.js";
 import {
-    getAllTestCasesByProblemId
+    getAllTestCasesByProblemId,
 } from "../services/testCase.service.js";
-
 import {
-    runSubmission
+    runSubmission,
 } from "../execution/runSubmission.js";
-
 
 const worker = new Worker(
     "submissions",
-
     async (job) => {
-        const { submissionId } = job.data;
+        const { submissionId, mode = "submit" } = job.data;
 
         if (!submissionId) {
             throw new Error("Missing submissionId");
         }
 
-        console.log(
-            `Processing submission ${submissionId}`
-        );
-        let submission;
-        try {
-            // ----------------------------------------------
-            // 1. Mark submission as PROCESSING
-            // ----------------------------------------------
+        if (!["run", "submit"].includes(mode)) {
+            throw new Error(`Invalid submission mode: ${mode}`);
+        }
 
+        console.log(
+            `Processing submission ${submissionId} in ${mode} mode`
+        );
+
+        let submission;
+
+        try {
             const submissionResult = await pool.query(
                 `UPDATE submissions
                  SET status = 'PROCESSING',
@@ -44,89 +44,109 @@ const worker = new Worker(
                 [submissionId]
             );
 
-
             if (submissionResult.rows.length === 0) {
                 throw new Error(
                     `Submission ${submissionId} not found`
                 );
             }
 
-
             submission = submissionResult.rows[0];
+
+            const problemResult = await pool.query(
+                `SELECT function_name, function_config, starter_code
+                 FROM problems
+                 WHERE id = $1 AND deleted_at IS NULL`,
+                [submission.problem_id]
+            );
+
+            if (problemResult.rows.length === 0) {
+                throw new Error(
+                    `Problem ${submission.problem_id} not found`
+                );
+            }
+
+            const problem = problemResult.rows[0];
+
+            if (!problem.function_name) {
+                throw new Error(
+                    `Problem ${submission.problem_id} has no function name`
+                );
+            }
+
+            if (
+                !problem.function_config ||
+                !Array.isArray(problem.function_config.parameters)
+            ) {
+                throw new Error(
+                    `Problem ${submission.problem_id} has an invalid function configuration`
+                );
+            }
+
+            if (!problem.starter_code?.[submission.language]) {
+                throw new Error(
+                    `Starter code unavailable for language: ${submission.language}`
+                );
+            }
 
             await publishSubmissionEvent({
                 type: "SUBMISSION_STATUS",
                 submissionId: submission.id,
                 userId: submission.user_id,
-                status: "PROCESSING"
+                status: "PROCESSING",
             });
-            // ----------------------------------------------
-            // 2. Fetch test cases
-            // ----------------------------------------------
 
-            const testCases =
+            const allTestCases =
                 await getAllTestCasesByProblemId(
                     submission.problem_id
                 );
 
+            const testCases =
+                mode === "run"
+                    ? allTestCases.filter(
+                        (testCase) => !testCase.is_hidden
+                    )
+                    : allTestCases;
 
             if (testCases.length === 0) {
                 throw new Error(
-                    `Problem ${submission.problem_id} has no test cases`
+                    `No ${mode === "run" ? "public " : ""}test cases found for problem ${submission.problem_id}`
                 );
             }
-
 
             console.log(
                 `Running ${testCases.length} test cases for submission ${submissionId}`
             );
 
-
-            // ----------------------------------------------
-            // 3. Start execution timer
-            // ----------------------------------------------
-
             const executionStart = process.hrtime.bigint();
-
-
-            // ----------------------------------------------
-            // 4. Execute and judge submission
-            // ----------------------------------------------
 
             const result = await runSubmission({
                 language: submission.language,
                 sourceCode: submission.source_code,
-                testCases
+                testCases,
+                functionName: problem.function_name,
+                functionConfig: problem.function_config,
+                mode,
             });
-
-
-            // ----------------------------------------------
-            // 5. Calculate execution time
-            // ----------------------------------------------
-
+            console.log(
+                "Test-case verdict summary:",
+                (result.testCaseResults ?? []).map((testCaseResult) => ({
+                    testCaseId: testCaseResult.testCaseId,
+                    status: testCaseResult.status,
+                }))
+            );
             const executionEnd = process.hrtime.bigint();
 
-            const executionTimeMs = Number(
-                executionEnd - executionStart
-            ) / 1_000_000;
-
-
-            const roundedExecutionTimeMs =
-                Math.round(executionTimeMs);
-
+            const executionTimeMs = Math.round(
+                Number(executionEnd - executionStart) / 1_000_000
+            );
 
             console.log(
                 `Submission ${submissionId} verdict: ${result.verdict}`
             );
 
             console.log(
-                `Submission ${submissionId} execution time: ${roundedExecutionTimeMs} ms`
+                `Submission ${submissionId} execution time: ${executionTimeMs} ms`
             );
-
-
-            // ----------------------------------------------
-            // 6. Mark submission as COMPLETED
-            // ----------------------------------------------
 
             await pool.query(
                 `UPDATE submissions
@@ -137,8 +157,8 @@ const worker = new Worker(
                  WHERE id = $3`,
                 [
                     result.verdict,
-                    roundedExecutionTimeMs,
-                    submissionId
+                    executionTimeMs,
+                    submissionId,
                 ]
             );
 
@@ -147,25 +167,54 @@ const worker = new Worker(
                 submissionId: submission.id,
                 userId: submission.user_id,
                 status: "COMPLETED",
-                verdict: result.verdict
+                verdict: result.verdict,
             });
-            // ----------------------------------------------
-            // 7. Return result to BullMQ
-            // ----------------------------------------------
 
-            return result;
 
+
+            // Keep detailed test results in BullMQ.
+            // Associate each result with its original test case using the ID.
+            const testCasesById = new Map(
+                testCases.map((testCase) => [
+                    String(testCase.id),
+                    testCase,
+                ])
+            );
+
+            return {
+                submissionId: submission.id,
+                mode,
+                verdict: result.verdict,
+                executionTimeMs,
+                testCaseResults: (result.testCaseResults ?? []).map(
+                    (testCaseResult) => {
+                        const testCase = testCasesById.get(
+                            String(testCaseResult.testCaseId)
+                        );
+
+                        // Fail safely if a result cannot be matched.
+                        if (!testCase) {
+                            throw new Error(
+                                `Could not match result to test case ${testCaseResult.testCaseId}`
+                            );
+                        }
+
+                        return {
+                            ...testCaseResult,
+                            isHidden: testCase.is_hidden,
+                            input: testCase.input,
+                            expectedOutput: testCase.expected_output,
+                        };
+                    }
+                ),
+                stderr: result.stderr,
+                exitCode: result.exitCode,
+            };
         } catch (error) {
-
             console.error(
                 `Submission ${submissionId} failed:`,
                 error
             );
-
-
-            // ----------------------------------------------
-            // Unexpected worker/system failure
-            // ----------------------------------------------
 
             try {
                 await pool.query(
@@ -175,52 +224,42 @@ const worker = new Worker(
                      WHERE id = $1`,
                     [submissionId]
                 );
-
             } catch (updateError) {
-
                 console.error(
                     `Failed to mark submission ${submissionId} as FAILED:`,
                     updateError
                 );
             }
-            await publishSubmissionEvent({
-                type: "SUBMISSION_STATUS",
-                submissionId,
-                userId: submission?.user_id,
-                status: "FAILED"
-            });
+
+            try {
+                await publishSubmissionEvent({
+                    type: "SUBMISSION_STATUS",
+                    submissionId,
+                    userId: submission?.user_id,
+                    status: "FAILED",
+                });
+            } catch (publishError) {
+                console.error(
+                    `Failed to publish failure event for submission ${submissionId}:`,
+                    publishError
+                );
+            }
 
             throw error;
         }
     },
-
     {
         connection: {
             host: "localhost",
-            port: 6379
-        }
+            port: 6379,
+        },
     }
 );
 
-
-// ======================================================
-// BullMQ EVENTS
-// ======================================================
-
 worker.on("completed", (job) => {
-
-    console.log(
-        `Job ${job.id} completed`
-    );
-
+    console.log(`Job ${job.id} completed`);
 });
 
-
 worker.on("failed", (job, error) => {
-
-    console.error(
-        `Job ${job?.id} failed:`,
-        error
-    );
-
+    console.error(`Job ${job?.id} failed:`, error);
 });

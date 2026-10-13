@@ -1,4 +1,6 @@
 import pool from "../db.js";
+import AppError from "../utils/AppError.js";
+import submissionQueue from "../queues/submission.queue.js";
 
 export const createSubmission = async ({
     userId,
@@ -47,10 +49,8 @@ export const createSubmission = async ({
     }
 };
 
-export const getSubmissionById = async (
-    submissionId,
-    userId
-) => {
+
+export const getSubmissionById = async (submissionId, userId) => {
     const result = await pool.query(
         `SELECT
             id,
@@ -64,22 +64,83 @@ export const getSubmissionById = async (
             completed_at,
             execution_time_ms
          FROM submissions
-         WHERE id = $1
-         AND user_id = $2`,
-        [
-            submissionId,
-            userId
-        ]
+         WHERE id = $1 AND user_id = $2`,
+        [submissionId, userId]
     );
 
     if (result.rows.length === 0) {
-        throw new AppError(
-            "Submission not found",
-            404
-        );
+        throw new AppError("Submission not found", 404);
     }
 
-    return result.rows[0];
+    const submission = result.rows[0];
+
+    // Read detailed results from the completed BullMQ job.
+    const job = await submissionQueue.getJob(
+        `submission-${submissionId}`
+    );
+
+    if (!job || submission.status !== "COMPLETED") {
+        return {
+            ...submission,
+            result: null,
+        };
+    }
+
+    const jobResult = job.returnvalue;
+
+    if (!jobResult) {
+        return {
+            ...submission,
+            result: null,
+        };
+    }
+
+    // Never expose hidden test-case details to the client.
+    const publicResults = (
+        jobResult.testCaseResults ?? []
+    )
+        .filter((testCase) => testCase.isHidden === false)
+        .map((testCase) => ({
+            testCaseId: testCase.testCaseId,
+            status: testCase.status,
+            input: testCase.input,
+            expectedOutput: testCase.expectedOutput,
+            actualOutput: testCase.actualOutput,
+            stderr: testCase.stderr,
+            exitCode: testCase.exitCode,
+        }));
+
+    const passedCount = publicResults.filter(
+        (testCase) => testCase.status === "ACCEPTED"
+    ).length;
+
+    // Only Submit returns the first failed public test case.
+    const firstFailedPublicCase =
+        jobResult.mode === "submit"
+            ? publicResults.find(
+                  (testCase) => testCase.status !== "ACCEPTED"
+              ) ?? null
+            : null;
+
+    return {
+        ...submission,
+        result: {
+            mode: jobResult.mode,
+            verdict: jobResult.verdict,
+            executionTimeMs: jobResult.executionTimeMs,
+            passedCount,
+            totalPublicCases: publicResults.length,
+
+            // Run displays all public test-case results.
+            publicTestCases:
+                jobResult.mode === "run"
+                    ? publicResults
+                    : undefined,
+
+            // Submit displays only the first failed public case.
+            firstFailedPublicCase,
+        },
+    };
 };
 
 

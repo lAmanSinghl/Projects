@@ -8,6 +8,7 @@ import {
 import {
     getPublicUserByUsername
 } from "../services/auth.service.js";
+
 export const createSubmissionController = async (req, res) => {
     const data = submissionSchema.parse(req.body);
 
@@ -15,15 +16,24 @@ export const createSubmissionController = async (req, res) => {
         userId: req.user.id,
         problemId: data.problemId,
         sourceCode: data.sourceCode,
-        language: data.language
+        language: data.language,
+        mode: data.mode
     });
 
     res.status(201).json(submission);
 };
 
-
 export const getSubmissionController = async (req, res) => {
     const submissionId = Number(req.params.id);
+
+    if (
+        !Number.isSafeInteger(submissionId) ||
+        submissionId <= 0
+    ) {
+        return res.status(400).json({
+            message: "Invalid submission ID",
+        });
+    }
 
     const submission = await getSubmissionById(
         submissionId,
@@ -32,7 +42,6 @@ export const getSubmissionController = async (req, res) => {
 
     res.status(200).json(submission);
 };
-
 
 export const getUserSubmissionsController = async (req, res) => {
     const username = req.query.username;
@@ -52,11 +61,7 @@ export const getUserSubmissionsController = async (req, res) => {
         });
     }
 
-    if (
-        !Number.isInteger(limit) ||
-        limit < 1 ||
-        limit > 100
-    ) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         return res.status(400).json({
             message: "Limit must be between 1 and 100"
         });
@@ -83,7 +88,6 @@ export const getUserSubmissionStatsController = async (req, res) => {
     }
 
     const user = await getPublicUserByUsername(username.trim());
-
     const stats = await getUserSubmissionStats(user.id);
 
     res.status(200).json(stats);
