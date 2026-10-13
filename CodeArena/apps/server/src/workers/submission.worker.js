@@ -12,23 +12,24 @@ import {
 const worker = new Worker(
     "submissions",
     async (job) => {
-        const { submissionId, mode = "submit" } = job.data;
+        const { submissionId, executionType } = job.data;
+
+        if (!["run", "submit"].includes(executionType)) {
+            throw new Error("Invalid execution type");
+        }
 
         if (!submissionId) {
             throw new Error("Missing submissionId");
         }
 
-        if (!["run", "submit"].includes(mode)) {
-            throw new Error(`Invalid submission mode: ${mode}`);
-        }
-
         console.log(
-            `Processing submission ${submissionId} in ${mode} mode`
+            `Processing submission ${submissionId} (${executionType})`
         );
 
         let submission;
 
         try {
+            // Mark the submission as processing.
             const submissionResult = await pool.query(
                 `UPDATE submissions
                  SET status = 'PROCESSING',
@@ -52,6 +53,7 @@ const worker = new Worker(
 
             submission = submissionResult.rows[0];
 
+            // Fetch problem configuration.
             const problemResult = await pool.query(
                 `SELECT function_name, function_config, starter_code
                  FROM problems
@@ -88,6 +90,7 @@ const worker = new Worker(
                 );
             }
 
+            // Notify the user that execution has started.
             await publishSubmissionEvent({
                 type: "SUBMISSION_STATUS",
                 submissionId: submission.id,
@@ -95,21 +98,24 @@ const worker = new Worker(
                 status: "PROCESSING",
             });
 
+            // Fetch all test cases for this problem.
             const allTestCases =
                 await getAllTestCasesByProblemId(
                     submission.problem_id
                 );
 
+            // Run uses public cases; Submit uses public and hidden cases.
             const testCases =
-                mode === "run"
+                executionType === "run"
                     ? allTestCases.filter(
-                        (testCase) => !testCase.is_hidden
+                        (testCase) => testCase.is_hidden === false
                     )
                     : allTestCases;
 
             if (testCases.length === 0) {
                 throw new Error(
-                    `No ${mode === "run" ? "public " : ""}test cases found for problem ${submission.problem_id}`
+                    `No ${executionType === "run" ? "public " : ""
+                    }test cases found for problem ${submission.problem_id}`
                 );
             }
 
@@ -119,21 +125,26 @@ const worker = new Worker(
 
             const executionStart = process.hrtime.bigint();
 
+            // Execute using the selected execution type.
             const result = await runSubmission({
                 language: submission.language,
                 sourceCode: submission.source_code,
                 testCases,
                 functionName: problem.function_name,
                 functionConfig: problem.function_config,
-                mode,
+                executionType,
             });
+
             console.log(
                 "Test-case verdict summary:",
-                (result.testCaseResults ?? []).map((testCaseResult) => ({
-                    testCaseId: testCaseResult.testCaseId,
-                    status: testCaseResult.status,
-                }))
+                (result.testCaseResults ?? []).map(
+                    (testCaseResult) => ({
+                        testCaseId: testCaseResult.testCaseId,
+                        status: testCaseResult.status,
+                    })
+                )
             );
+
             const executionEnd = process.hrtime.bigint();
 
             const executionTimeMs = Math.round(
@@ -148,6 +159,7 @@ const worker = new Worker(
                 `Submission ${submissionId} execution time: ${executionTimeMs} ms`
             );
 
+            // Persist the final submission status and verdict.
             await pool.query(
                 `UPDATE submissions
                  SET status = 'COMPLETED',
@@ -162,6 +174,7 @@ const worker = new Worker(
                 ]
             );
 
+            // Notify the user that execution has completed.
             await publishSubmissionEvent({
                 type: "SUBMISSION_STATUS",
                 submissionId: submission.id,
@@ -170,10 +183,7 @@ const worker = new Worker(
                 verdict: result.verdict,
             });
 
-
-
-            // Keep detailed test results in BullMQ.
-            // Associate each result with its original test case using the ID.
+            // Match execution results to their original test cases.
             const testCasesById = new Map(
                 testCases.map((testCase) => [
                     String(testCase.id),
@@ -181,32 +191,34 @@ const worker = new Worker(
                 ])
             );
 
+            // Keep detailed results in BullMQ for result retrieval.
             return {
                 submissionId: submission.id,
-                mode,
+                executionType,
                 verdict: result.verdict,
                 executionTimeMs,
-                testCaseResults: (result.testCaseResults ?? []).map(
-                    (testCaseResult) => {
-                        const testCase = testCasesById.get(
-                            String(testCaseResult.testCaseId)
+
+                testCaseResults: (
+                    result.testCaseResults ?? []
+                ).map((testCaseResult) => {
+                    const testCase = testCasesById.get(
+                        String(testCaseResult.testCaseId)
+                    );
+
+                    if (!testCase) {
+                        throw new Error(
+                            `Could not match result to test case ${testCaseResult.testCaseId}`
                         );
-
-                        // Fail safely if a result cannot be matched.
-                        if (!testCase) {
-                            throw new Error(
-                                `Could not match result to test case ${testCaseResult.testCaseId}`
-                            );
-                        }
-
-                        return {
-                            ...testCaseResult,
-                            isHidden: testCase.is_hidden,
-                            input: testCase.input,
-                            expectedOutput: testCase.expected_output,
-                        };
                     }
-                ),
+
+                    return {
+                        ...testCaseResult,
+                        isHidden: testCase.is_hidden,
+                        input: testCase.input,
+                        expectedOutput: testCase.expected_output,
+                    };
+                }),
+
                 stderr: result.stderr,
                 exitCode: result.exitCode,
             };

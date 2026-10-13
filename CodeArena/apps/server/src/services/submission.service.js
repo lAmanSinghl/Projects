@@ -6,8 +6,13 @@ export const createSubmission = async ({
     userId,
     problemId,
     sourceCode,
-    language
+    language,
+    executionType,
 }) => {
+    if (!["run", "submit"].includes(executionType)) {
+        throw new AppError("Invalid execution type", 400);
+    }
+
     const client = await pool.connect();
 
     try {
@@ -31,24 +36,22 @@ export const createSubmission = async ({
                 "SUBMISSION_CREATED",
                 submission.id,
                 JSON.stringify({
-                    submissionId: submission.id
-                })
+                    submissionId: submission.id,
+                    executionType,
+                }),
             ]
         );
 
         await client.query("COMMIT");
 
         return submission;
-
     } catch (error) {
         await client.query("ROLLBACK");
         throw error;
-
     } finally {
         client.release();
     }
 };
-
 
 export const getSubmissionById = async (submissionId, userId) => {
     const result = await pool.query(
@@ -74,7 +77,6 @@ export const getSubmissionById = async (submissionId, userId) => {
 
     const submission = result.rows[0];
 
-    // Read detailed results from the completed BullMQ job.
     const job = await submissionQueue.getJob(
         `submission-${submissionId}`
     );
@@ -114,9 +116,9 @@ export const getSubmissionById = async (submissionId, userId) => {
         (testCase) => testCase.status === "ACCEPTED"
     ).length;
 
-    // Only Submit returns the first failed public test case.
+    // Submit reports the first failed public case, if one was executed.
     const firstFailedPublicCase =
-        jobResult.mode === "submit"
+        jobResult.executionType === "submit"
             ? publicResults.find(
                   (testCase) => testCase.status !== "ACCEPTED"
               ) ?? null
@@ -125,29 +127,27 @@ export const getSubmissionById = async (submissionId, userId) => {
     return {
         ...submission,
         result: {
-            mode: jobResult.mode,
+            executionType: jobResult.executionType,
             verdict: jobResult.verdict,
             executionTimeMs: jobResult.executionTimeMs,
             passedCount,
             totalPublicCases: publicResults.length,
 
-            // Run displays all public test-case results.
+            // Run returns every executed public test-case result.
             publicTestCases:
-                jobResult.mode === "run"
+                jobResult.executionType === "run"
                     ? publicResults
                     : undefined,
 
-            // Submit displays only the first failed public case.
             firstFailedPublicCase,
         },
     };
 };
 
-
 export const getUserSubmissions = async ({
     userId,
     page,
-    limit
+    limit,
 }) => {
     const offset = (page - 1) * limit;
 
@@ -187,8 +187,8 @@ export const getUserSubmissions = async ({
             page,
             limit,
             total,
-            totalPages: Math.ceil(total / limit)
-        }
+            totalPages: Math.ceil(total / limit),
+        },
     };
 };
 
@@ -215,8 +215,9 @@ export const getUserSubmissionStats = async (userId) => {
         totalSubmissions: total,
         acceptedSubmissions: accepted,
         solvedProblems: stats.solved_problems,
-        acceptanceRate: total === 0
-            ? 0
-            : Number(((accepted / total) * 100).toFixed(1))
+        acceptanceRate:
+            total === 0
+                ? 0
+                : Number(((accepted / total) * 100).toFixed(1)),
     };
 };

@@ -1,33 +1,13 @@
-
-import { executeSubmission } from "./executor.js";
-import { judgeOutput } from "./judge.js";
-
-const EXECUTION_VERDICTS = {
-    OUTPUT_LIMIT: "OUTPUT_LIMIT_EXCEEDED",
-    COMPILATION_ERROR: "COMPILATION_ERROR",
-    COMPILATION_TIMEOUT: "COMPILATION_TIME_LIMIT_EXCEEDED",
-    TIME_LIMIT: "TIME_LIMIT_EXCEEDED",
-    MEMORY_LIMIT: "MEMORY_LIMIT_EXCEEDED",
-    RUNTIME_ERROR: "RUNTIME_ERROR",
-};
-
-const CASE_VERDICTS = {
-    RUNTIME_ERROR: "RUNTIME_ERROR",
-    TIME_LIMIT: "TIME_LIMIT_EXCEEDED",
-    MEMORY_LIMIT: "MEMORY_LIMIT_EXCEEDED",
-    OUTPUT_LIMIT: "OUTPUT_LIMIT_EXCEEDED",
-};
-
 export const runSubmission = async ({
     language,
     sourceCode,
     testCases,
     functionName,
     functionConfig,
-    mode = "submit",
+    executionType,
 }) => {
-    if (!["run", "submit"].includes(mode)) {
-        throw new Error(`Invalid execution mode: ${mode}`);
+    if (!["run", "submit"].includes(executionType)) {
+        throw new Error("Invalid execution type");
     }
 
     const testCaseResults = [];
@@ -97,9 +77,9 @@ export const runSubmission = async ({
             if (caseVerdict === "WRONG_ANSWER") {
                 overallVerdict = "WRONG_ANSWER";
 
-                // Run continues after wrong answers.
-                // Submit stops at the first wrong answer.
-                return mode === "run";
+                // Run continues after Wrong Answer.
+                // Submit stops after the first Wrong Answer.
+                return executionType === "run";
             }
 
             if (caseVerdict) {
@@ -111,7 +91,18 @@ export const runSubmission = async ({
         },
     });
 
-    // Sandbox-level failures can occur before a case is judged.
+    // An internal judging error takes precedence over a normal
+    // STOPPED result because it is not a candidate verdict.
+    if (overallVerdict === "INTERNAL_ERROR") {
+        return {
+            executionType,
+            verdict: "INTERNAL_ERROR",
+            testCaseResults,
+            stderr: execution.stderr ?? "",
+            exitCode: execution.exitCode ?? null,
+        };
+    }
+
     const executionFailure =
         EXECUTION_VERDICTS[execution.status];
 
@@ -137,25 +128,21 @@ export const runSubmission = async ({
                 exitCode: failedExecution.exitCode ?? null,
             });
         }
-    } else if (
-        execution.status === "RUNTIME_ERROR" ||
-        execution.status === "INTERNAL_ERROR"
-    ) {
-        overallVerdict =
-            execution.status === "INTERNAL_ERROR"
-                ? "INTERNAL_ERROR"
-                : "RUNTIME_ERROR";
+    } else if (execution.status === "RUNTIME_ERROR") {
+        overallVerdict = "RUNTIME_ERROR";
+    } else if (execution.status === "INTERNAL_ERROR") {
+        overallVerdict = "INTERNAL_ERROR";
     } else if (execution.status === "STOPPED") {
-        // The callback already decided the verdict.
+        // The callback already determined the verdict.
     } else if (execution.status !== "COMPLETED") {
         overallVerdict = "RUNTIME_ERROR";
     }
 
     return {
-        mode,
+        executionType,
         verdict: overallVerdict,
         testCaseResults,
-        stderr: execution.stderr,
-        exitCode: execution.exitCode,
+        stderr: execution.stderr ?? "",
+        exitCode: execution.exitCode ?? null,
     };
 };

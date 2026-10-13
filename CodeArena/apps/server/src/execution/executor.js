@@ -23,9 +23,7 @@ ${sourceCode}
 const __fs = require("node:fs");
 
 try {
-    const __args = JSON.parse(
-        __fs.readFileSync(0, "utf8")
-    );
+    const __args = JSON.parse(__fs.readFileSync(0, "utf8"));
 
     if (!Array.isArray(__args)) {
         throw new Error("Test input must be a JSON array of arguments");
@@ -46,6 +44,96 @@ try {
 `;
 };
 
+const cppTypes = {
+    number: "int",
+    "number[]": "std::vector<int>",
+};
+
+const getCppType = (type) => {
+    const cppType = cppTypes[type];
+
+    if (!cppType) {
+        throw new Error(`Unsupported C++ function type: ${type}`);
+    }
+
+    return cppType;
+};
+
+const generateCppProgram = ({
+    sourceCode,
+    functionName,
+    functionConfig,
+}) => {
+    if (
+        typeof functionName !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(functionName)
+    ) {
+        throw new Error("Invalid C++ function name");
+    }
+
+    if (
+        !functionConfig ||
+        !Array.isArray(functionConfig.parameters) ||
+        typeof functionConfig.returnType !== "string"
+    ) {
+        throw new Error("Invalid function configuration");
+    }
+
+    const parameterExpressions = functionConfig.parameters.map(
+        (parameter, index) => {
+            const cppType = getCppType(parameter.type);
+
+            return `__args.at(${index}).get<${cppType}>()`;
+        }
+    );
+
+    const returnType = getCppType(functionConfig.returnType);
+
+    return `
+#include <bits/stdc++.h>
+#include <nlohmann/json.hpp>
+
+using namespace std;
+using json = nlohmann::json;
+
+${sourceCode}
+
+int main() {
+    try {
+        json __args;
+        cin >> __args;
+
+        if (!__args.is_array()) {
+            throw runtime_error(
+                "Test input must be a JSON array of arguments"
+            );
+        }
+
+        if (__args.size() != ${functionConfig.parameters.length}) {
+            throw runtime_error(
+                "Incorrect number of function arguments"
+            );
+        }
+
+        Solution __solution;
+
+        ${returnType} __result =
+            __solution.${functionName}(
+                ${parameterExpressions.join(", ")}
+            );
+
+        json __output = __result;
+        cout << __output.dump();
+
+        return 0;
+    } catch (const exception& error) {
+        cerr << error.what() << endl;
+        return 1;
+    }
+}
+`;
+};
+
 export const executeSubmission = async ({
     language,
     sourceCode,
@@ -60,7 +148,7 @@ export const executeSubmission = async ({
         throw new Error(`Unsupported language: ${language}`);
     }
 
-    if (language !== "javascript") {
+    if (language !== "javascript" && language !== "cpp") {
         throw new Error(
             `Function-based execution is not implemented for ${language} yet`
         );
@@ -80,16 +168,22 @@ export const executeSubmission = async ({
             path.basename(strategy.sourceFile)
         );
 
-        const generatedSource = generateJavaScriptProgram({
-            sourceCode,
-            functionName,
-        });
+        let generatedSource;
 
-        await fs.writeFile(
-            sourcePath,
-            generatedSource,
-            "utf8"
-        );
+        if (language === "javascript") {
+            generatedSource = generateJavaScriptProgram({
+                sourceCode,
+                functionName,
+            });
+        } else {
+            generatedSource = generateCppProgram({
+                sourceCode,
+                functionName,
+                functionConfig,
+            });
+        }
+
+        await fs.writeFile(sourcePath, generatedSource, "utf8");
 
         const normalizedTestCases = testCases.map((testCase, index) => {
             let args;
@@ -105,6 +199,12 @@ export const executeSubmission = async ({
             if (!Array.isArray(args)) {
                 throw new Error(
                     `Test case ${index + 1} input must be a JSON array`
+                );
+            }
+
+            if (args.length !== functionConfig.parameters.length) {
+                throw new Error(
+                    `Test case ${index + 1} has an incorrect number of arguments`
                 );
             }
 
@@ -128,4 +228,29 @@ export const executeSubmission = async ({
             force: true,
         });
     }
+};
+
+const normalize = (value) => {
+    if (Array.isArray(value)) {
+        return value.map(normalize);
+    }
+
+    if (value !== null && typeof value === "object") {
+        return Object.fromEntries(
+            Object.keys(value)
+                .sort()
+                .map((key) => [key, normalize(value[key])])
+        );
+    }
+
+    return value;
+};
+
+export const judgeOutput = (actualOutput, expectedOutput) => {
+    const actual = JSON.stringify(normalize(actualOutput));
+    const expected = JSON.stringify(normalize(expectedOutput));
+
+    return actual === expected
+        ? "ACCEPTED"
+        : "WRONG_ANSWER";
 };

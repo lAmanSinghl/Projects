@@ -1,6 +1,6 @@
 const cppStrategy = {
     name: "cpp",
-    image: "gcc:14",
+    image: "codearena-cpp:14",
 
     sourceFile: "/tmp/codearena/main.cpp",
 

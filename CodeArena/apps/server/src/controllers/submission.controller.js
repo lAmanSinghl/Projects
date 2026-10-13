@@ -1,15 +1,18 @@
+
 import submissionSchema from "../validation/submission.schema.js";
+
 import {
     createSubmission,
     getSubmissionById,
     getUserSubmissions,
-    getUserSubmissionStats
+    getUserSubmissionStats,
 } from "../services/submission.service.js";
+
 import {
-    getPublicUserByUsername
+    getPublicUserByUsername,
 } from "../services/auth.service.js";
 
-export const createSubmissionController = async (req, res) => {
+const createExecution = async (req, res, executionType) => {
     const data = submissionSchema.parse(req.body);
 
     const submission = await createSubmission({
@@ -17,19 +20,24 @@ export const createSubmissionController = async (req, res) => {
         problemId: data.problemId,
         sourceCode: data.sourceCode,
         language: data.language,
-        mode: data.mode
+        executionType,
     });
 
     res.status(201).json(submission);
 };
 
+export const runSubmissionController = async (req, res) => {
+    return createExecution(req, res, "run");
+};
+
+export const submitSubmissionController = async (req, res) => {
+    return createExecution(req, res, "submit");
+};
+
 export const getSubmissionController = async (req, res) => {
     const submissionId = Number(req.params.id);
 
-    if (
-        !Number.isSafeInteger(submissionId) ||
-        submissionId <= 0
-    ) {
+    if (!Number.isSafeInteger(submissionId) || submissionId <= 0) {
         return res.status(400).json({
             message: "Invalid submission ID",
         });
@@ -42,6 +50,10 @@ export const getSubmissionController = async (req, res) => {
 
     res.status(200).json(submission);
 };
+
+// Keep the existing getUserSubmissionsController and
+// getUserSubmissionStatsController implementations below this point.
+
 
 export const getUserSubmissionsController = async (req, res) => {
     const username = req.query.username;

@@ -2,40 +2,28 @@
 import express from "express";
 
 import {
-    createSubmissionController,
+    runSubmissionController,
+    submitSubmissionController,
     getSubmissionController,
     getUserSubmissionsController,
-    getUserSubmissionStatsController
+    getUserSubmissionStatsController,
 } from "../controllers/submission.controller.js";
 
 import authMiddleware from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// Creating submissions requires authentication.
-router.post(
-    "/",
-    authMiddleware,
-    createSubmissionController
-);
+// Run against public test cases.
+router.post("/run", authMiddleware, runSubmissionController);
 
-// Public submission history, selected by username.
-router.get(
-    "/",
-    getUserSubmissionsController
-);
+// Submit against public and hidden test cases.
+router.post("/submit", authMiddleware, submitSubmissionController);
 
-// Public stats, selected by username.
-router.get(
-    "/stats",
-    getUserSubmissionStatsController
-);
+// Submission history and stats.
+router.get("/", getUserSubmissionsController);
+router.get("/stats", getUserSubmissionStatsController);
 
-// Individual submission details remain protected.
-router.get(
-    "/:id",
-    authMiddleware,
-    getSubmissionController
-);
+// Retrieve an individual submission and its result.
+router.get("/:id", authMiddleware, getSubmissionController);
 
 export default router;
