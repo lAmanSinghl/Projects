@@ -53,6 +53,7 @@ export const createSubmission = async ({
     }
 };
 
+
 export const getSubmissionById = async (submissionId, userId) => {
     const result = await pool.query(
         `SELECT
@@ -97,11 +98,34 @@ export const getSubmissionById = async (submissionId, userId) => {
         };
     }
 
-    // Never expose hidden test-case details to the client.
-    const publicResults = (
-        jobResult.testCaseResults ?? []
-    )
-        .filter((testCase) => testCase.isHidden === false)
+    const evaluatedResults = jobResult.testCaseResults ?? [];
+
+    // Load visibility from the database instead of trusting result metadata.
+    const testCaseIds = evaluatedResults
+        .map((testCase) => testCase.testCaseId)
+        .filter((id) => id !== undefined && id !== null);
+
+    const visibilityResult = testCaseIds.length
+        ? await pool.query(
+              `SELECT id, is_hidden
+               FROM test_cases
+               WHERE id = ANY($1::bigint[])`,
+              [testCaseIds]
+          )
+        : { rows: [] };
+
+    const hiddenById = new Map(
+        visibilityResult.rows.map((row) => [
+            String(row.id),
+            row.is_hidden,
+        ])
+    );
+
+    const publicResults = evaluatedResults
+        .filter(
+            (testCase) =>
+                hiddenById.get(String(testCase.testCaseId)) === false
+        )
         .map((testCase) => ({
             testCaseId: testCase.testCaseId,
             status: testCase.status,
@@ -112,11 +136,10 @@ export const getSubmissionById = async (submissionId, userId) => {
             exitCode: testCase.exitCode,
         }));
 
-    const passedCount = publicResults.filter(
+    const passedPublicCount = publicResults.filter(
         (testCase) => testCase.status === "ACCEPTED"
     ).length;
 
-    // Submit reports the first failed public case, if one was executed.
     const firstFailedPublicCase =
         jobResult.executionType === "submit"
             ? publicResults.find(
@@ -130,19 +153,25 @@ export const getSubmissionById = async (submissionId, userId) => {
             executionType: jobResult.executionType,
             verdict: jobResult.verdict,
             executionTimeMs: jobResult.executionTimeMs,
-            passedCount,
-            totalPublicCases: publicResults.length,
 
-            // Run returns every executed public test-case result.
+            // Public-case counts and details are safe to display.
+            passedCount: passedPublicCount,
+            totalPublicCases: publicResults.length,
             publicTestCases:
                 jobResult.executionType === "run"
                     ? publicResults
                     : undefined,
-
             firstFailedPublicCase,
+
+            // Overall evaluated counts include hidden cases, but not their data.
+            evaluatedCount: evaluatedResults.length,
+            passedEvaluatedCount: evaluatedResults.filter(
+                (testCase) => testCase.status === "ACCEPTED"
+            ).length,
         },
     };
 };
+
 
 export const getUserSubmissions = async ({
     userId,

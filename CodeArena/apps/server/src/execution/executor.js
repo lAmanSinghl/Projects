@@ -79,12 +79,19 @@ const generateCppProgram = ({
         throw new Error("Invalid function configuration");
     }
 
-    const parameterExpressions = functionConfig.parameters.map(
+    const argumentDeclarations = functionConfig.parameters.map(
         (parameter, index) => {
             const cppType = getCppType(parameter.type);
 
-            return `__args.at(${index}).get<${cppType}>()`;
+            return `
+        ${cppType} __arg${index} =
+            __args.at(${index}).get<${cppType}>();
+`;
         }
+    );
+
+    const argumentNames = functionConfig.parameters.map(
+        (_, index) => `__arg${index}`
     );
 
     const returnType = getCppType(functionConfig.returnType);
@@ -115,11 +122,13 @@ int main() {
             );
         }
 
+        ${argumentDeclarations.join("\n")}
+
         Solution __solution;
 
         ${returnType} __result =
             __solution.${functionName}(
-                ${parameterExpressions.join(", ")}
+                ${argumentNames.join(", ")}
             );
 
         json __output = __result;

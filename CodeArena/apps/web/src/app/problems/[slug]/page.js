@@ -58,12 +58,12 @@ const TERMINAL_STATES = new Set([
 
 function Icon({ name, size = 16 }) {
   const paths = {
-    file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></>,
-    code: <><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></>,
-    play: <path d="m8 5 12 7-12 7V5Z"/>,
-    send: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
-    check: <path d="m5 12 4 4L19 6"/>,
-    info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7h.01"/></>,
+    file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /></>,
+    code: <><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></>,
+    play: <path d="m8 5 12 7-12 7V5Z" />,
+    send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
+    check: <path d="m5 12 4 4L19 6" />,
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7h.01" /></>,
   };
 
   return (
@@ -211,16 +211,24 @@ export default function ProblemWorkspacePage() {
     [problem?.description]
   );
 
+  const executionType = submissionResult?.executionType;
+
   const passedCount =
-    submissionResult?.passedCount ??
-    submissionResult?.passed_count ??
-    (submissionCases.length ? submissionCases.filter(isPassed).length : null);
+    executionType === "submit"
+      ? submissionResult?.passedEvaluatedCount ?? null
+      : submissionResult?.passedCount ??
+      submissionResult?.passed_count ??
+      (submissionCases.length
+        ? submissionCases.filter(isPassed).length
+        : null);
 
   const totalCount =
-    submissionResult?.totalCases ??
-    submissionResult?.total_cases ??
-    submissionResult?.totalPublicCases ??
-    (submissionCases.length || null);
+    executionType === "submit"
+      ? submissionResult?.evaluatedCount ?? null
+      : submissionResult?.totalPublicCases ??
+      submissionResult?.totalCases ??
+      submissionResult?.total_cases ??
+      (submissionCases.length || null);
 
   const stopPolling = useCallback(() => {
     if (pollTimer.current) clearTimeout(pollTimer.current);
@@ -346,7 +354,10 @@ export default function ProblemWorkspacePage() {
           ...data,
           verdict: data?.verdict ?? result?.verdict,
         })) {
-          if (mode === "run") setBottomTab("testresult");
+          if (mode === "run") {
+            setBottomTab("testresult");
+            setRunResults(cases);
+          }
 
           if (mode === "submit") {
             setShowResultTab(true);
@@ -371,42 +382,47 @@ export default function ProblemWorkspacePage() {
     poll();
   }, [stopPolling]);
 
-const execute = async (mode) => {
-  if (busyMode || !problem) return;
+  const execute = async (mode) => {
+    if (busyMode || !problem) return;
 
-  if (!sourceCode.trim()) {
-    setSubmissionError("Write some code before running it.");
-    return;
-  }
+    if (!sourceCode.trim()) {
+      setSubmissionError("Write some code before running it.");
+      return;
+    }
 
-  setBusyMode(mode);
-  setSubmission(null);
-  setSubmissionError("");
-  setPollingTimedOut(false);
+    setBusyMode(mode);
+    setSubmission(null);
+    setSubmissionError("");
+    setPollingTimedOut(false);
 
-  if (mode === "run") {
-    // Run must not display or activate the Submit result screen.
-    setRunResults([]);
-    setBottomTab("testresult");
-    setActiveTab("description");
-  } else {
-    setShowResultTab(true);
-    setActiveTab("result");
-  }
+    if (mode === "run") {
+      setRunResults([]);
+      setBottomTab("testcases");
+      setActiveTab("description");
+    } else {
+      setShowResultTab(true);
+      setActiveTab("result");
+    }
 
-  // Keep the existing POST request and polling code below this point.
+    // Keep the existing POST request and polling code below this point.
 
     try {
-      const response = await apiFetch(`${API_URL}/submissions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          problemId: problem.id,
-          sourceCode,
-          language,
-          mode,
-        }),
-      });
+
+      const response = await apiFetch(
+        `${API_URL}/submissions/${mode === "run" ? "run" : "submit"}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            problemId: problem.id,
+            sourceCode,
+            language,
+          }),
+        }
+      );
+
 
       const data = await response.json().catch(() => ({}));
 
@@ -672,11 +688,10 @@ const execute = async (mode) => {
                   ) : (
                     <div className={styles.verdictContent}>
                       <div
-                        className={`${styles.verdictHero} ${
-                          latestStatus === "ACCEPTED"
+                        className={`${styles.verdictHero} ${latestStatus === "ACCEPTED"
                             ? styles.accepted
                             : styles.rejected
-                        }`}
+                          }`}
                       >
                         <div className={styles.verdictIcon}>
                           {latestStatus === "ACCEPTED" ? "✓" : "×"}

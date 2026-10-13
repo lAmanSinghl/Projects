@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const COMPILE_TIMEOUT_MS = 10_000;
+const COMPILE_TIMEOUT_MS = 30_000;
 const EXECUTION_TIMEOUT_MS = 5_000;
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 
@@ -47,15 +47,15 @@ const runProcess = (
         };
 
         const stopProcess = (reason) => {
-            
+
             if (settled) return;
 
             if (reason === "TIME_LIMIT") {
                 timedOut = true;
-                Promise.resolve(onTimeout?.()).catch(() => {});
+                Promise.resolve(onTimeout?.()).catch(() => { });
             } else {
                 outputLimitExceeded = true;
-                Promise.resolve(onOutputLimit?.()).catch(() => {});
+                Promise.resolve(onOutputLimit?.()).catch(() => { });
             }
 
             child.kill("SIGTERM");
@@ -103,7 +103,7 @@ const runProcess = (
         });
 
         if (input !== undefined) {
-            child.stdin.on("error", () => {});
+            child.stdin.on("error", () => { });
             child.stdin.end(input);
         } else {
             child.stdin.end();
@@ -152,7 +152,7 @@ export const runSandbox = async ({
             [
                 "create",
                 "-i",
-                "--memory=128m",
+                "--memory=512m",
                 "--cpus=0.5",
                 "--pids-limit=64",
                 "--cap-drop=ALL",
@@ -205,6 +205,12 @@ export const runSandbox = async ({
             }
 
             if (compilation.exitCode !== 0) {
+                console.error("C++ COMPILATION FAILED");
+                console.error("Image:", image);
+                console.error("Exit code:", compilation.exitCode);
+                console.error("Compiler stdout:", compilation.stdout);
+                console.error("Compiler stderr:", compilation.stderr);
+
                 return {
                     status: "COMPILATION_ERROR",
                     stdout: compilation.stdout,

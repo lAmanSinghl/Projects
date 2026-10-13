@@ -1,3 +1,25 @@
+
+import { executeSubmission } from "./executor.js";
+import { judgeOutput } from "./judge.js";
+
+const CASE_VERDICTS = {
+    COMPILATION_ERROR: "COMPILATION_ERROR",
+    COMPILATION_TIMEOUT: "COMPILATION_TIME_LIMIT_EXCEEDED",
+    TIME_LIMIT: "TIME_LIMIT_EXCEEDED",
+    MEMORY_LIMIT: "MEMORY_LIMIT_EXCEEDED",
+    OUTPUT_LIMIT: "OUTPUT_LIMIT_EXCEEDED",
+    RUNTIME_ERROR: "RUNTIME_ERROR",
+};
+
+const EXECUTION_VERDICTS = {
+    COMPILATION_ERROR: "COMPILATION_ERROR",
+    COMPILATION_TIMEOUT: "COMPILATION_TIME_LIMIT_EXCEEDED",
+    TIME_LIMIT: "TIME_LIMIT_EXCEEDED",
+    MEMORY_LIMIT: "MEMORY_LIMIT_EXCEEDED",
+    OUTPUT_LIMIT: "OUTPUT_LIMIT_EXCEEDED",
+    RUNTIME_ERROR: "RUNTIME_ERROR",
+};
+
 export const runSubmission = async ({
     language,
     sourceCode,
@@ -57,7 +79,6 @@ export const runSubmission = async ({
 
                 if (!caseVerdict) {
                     actualOutput = actualValue;
-
                     caseVerdict = judgeOutput(
                         actualValue,
                         expectedValue
@@ -74,25 +95,32 @@ export const runSubmission = async ({
                 exitCode: executionResult.exitCode ?? null,
             });
 
+
             if (caseVerdict === "WRONG_ANSWER") {
                 overallVerdict = "WRONG_ANSWER";
 
-                // Run continues after Wrong Answer.
-                // Submit stops after the first Wrong Answer.
+                // Run continues to show every public test case.
+                // Submit stops at the first wrong answer.
                 return executionType === "run";
             }
 
+            if (caseVerdict === "ACCEPTED") {
+                // Keep evaluating the remaining test cases.
+                // Do not overwrite a previous wrong answer.
+                return true;
+            }
+
             if (caseVerdict) {
+                // Stop on compilation, runtime, or other errors.
                 overallVerdict = caseVerdict;
                 return false;
             }
 
             return true;
+
         },
     });
 
-    // An internal judging error takes precedence over a normal
-    // STOPPED result because it is not a candidate verdict.
     if (overallVerdict === "INTERNAL_ERROR") {
         return {
             executionType,
@@ -128,8 +156,6 @@ export const runSubmission = async ({
                 exitCode: failedExecution.exitCode ?? null,
             });
         }
-    } else if (execution.status === "RUNTIME_ERROR") {
-        overallVerdict = "RUNTIME_ERROR";
     } else if (execution.status === "INTERNAL_ERROR") {
         overallVerdict = "INTERNAL_ERROR";
     } else if (execution.status === "STOPPED") {
