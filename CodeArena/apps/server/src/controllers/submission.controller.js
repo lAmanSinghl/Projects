@@ -4,6 +4,7 @@ import submissionSchema from "../validation/submission.schema.js";
 import {
     createSubmission,
     getSubmissionById,
+    getPublicSubmissionById,
     getUserSubmissions,
     getUserSubmissionStats,
     getProblemSubmissions,
@@ -121,4 +122,18 @@ export const getProblemSubmissionsController = async (req, res) => {
     });
 
     res.status(200).json({ submissions });
+};
+
+export const getPublicSubmissionController = async (req, res) => {
+    const submissionId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(submissionId) || submissionId <= 0) {
+        return res.status(400).json({
+            message: "Invalid submission ID",
+        });
+    }
+
+    const submission = await getPublicSubmissionById(submissionId);
+
+    res.status(200).json(submission);
 };

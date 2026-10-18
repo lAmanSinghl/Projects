@@ -241,3 +241,90 @@ export const getProblemSubmissions = async ({
 
     return result.rows;
 };
+
+
+export const getPublicSubmissionById = async (submissionId) => {
+    const { rows } = await pool.query(
+        `SELECT
+            s.id,
+            s.problem_id,
+            p.slug AS problem_slug,
+            p.title AS problem_title,
+            s.language,
+            s.status,
+            s.verdict,
+            s.source_code,
+            s.created_at,
+            s.execution_time_ms,
+            s.error_output,
+            s.exit_code,
+            s.failed_test_case_id,
+            s.actual_output,
+            s.passed_test_cases,
+            s.total_test_cases
+         FROM submissions s
+         JOIN problems p ON p.id = s.problem_id
+         WHERE s.id = $1`,
+        [submissionId]
+    );
+
+    if (rows.length === 0) {
+        throw new AppError("Submission not found", 404);
+    }
+
+    const submission = rows[0];
+
+    const response = {
+        id: submission.id,
+        problemId: submission.problem_id,
+        problemSlug: submission.problem_slug,
+        problemTitle: submission.problem_title,
+        language: submission.language,
+        status: submission.status,
+        verdict: submission.verdict,
+        createdAt: submission.created_at,
+        sourceCode: submission.source_code,
+        result: null,
+    };
+
+    if (submission.status !== "COMPLETED") {
+        return response;
+    }
+
+    let failedTestCase = null;
+
+    if (submission.failed_test_case_id !== null) {
+        const { rows: testCases } = await pool.query(
+            `SELECT id, input, expected_output
+             FROM test_cases
+             WHERE id = $1
+               AND is_hidden = FALSE`,
+            [submission.failed_test_case_id]
+        );
+
+        if (testCases.length > 0) {
+            failedTestCase = {
+                id: testCases[0].id,
+                input: testCases[0].input,
+                expectedOutput: testCases[0].expected_output,
+                actualOutput: submission.actual_output,
+            };
+        }
+    }
+
+    response.result = {
+        verdict: submission.verdict,
+        executionTimeMs: submission.execution_time_ms,
+        passedTestCases: submission.passed_test_cases,
+        totalTestCases: submission.total_test_cases,
+        ...(submission.error_output
+            ? { errorOutput: submission.error_output }
+            : {}),
+        ...(submission.exit_code !== null
+            ? { exitCode: submission.exit_code }
+            : {}),
+        ...(failedTestCase ? { failedTestCase } : {}),
+    };
+
+    return response;
+};

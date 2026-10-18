@@ -8,6 +8,7 @@ import {
     getUserSubmissionsController,
     getUserSubmissionStatsController,
     getProblemSubmissionsController,
+    getPublicSubmissionController
 } from "../controllers/submission.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 
@@ -25,6 +26,7 @@ router.get("/stats", getUserSubmissionStatsController);
 
 // Retrieve an individual submission and its result.
 router.get("/:id", authMiddleware, getSubmissionController);
+router.get("/public/:id", getPublicSubmissionController);
 
 router.get("/problem/:problemId",authMiddleware,getProblemSubmissionsController);
 

@@ -29,7 +29,7 @@ import {
 } from "./workspaceUtils";
 
 export default function ProblemWorkspacePage() {
-  const { slug } = useParams();
+  const { slug, submissionId } = useParams();
   const workspaceRef = useRef(null);
   const pollTimer = useRef(null);
   const pollSequence = useRef(0);
@@ -55,6 +55,7 @@ export default function ProblemWorkspacePage() {
   const [activeTestCase, setActiveTestCase] = useState(0);
   const [activeRunResult, setActiveRunResult] = useState(0);
   const [showResultTab, setShowResultTab] = useState(false);
+  const [submissionsRefreshKey, setSubmissionsRefreshKey] = useState(0);
   const [leftWidth, setLeftWidth] = useState(56);
   const [editorHeight, setEditorHeight] = useState(60);
   // busyMode is only an execution lock for the Run/Submit buttons.
@@ -159,7 +160,85 @@ export default function ProblemWorkspacePage() {
       pollSequence.current += 1;
     };
   }, [slug, stopPolling]);
+
+
+  useEffect(() => {
+    // Normal problem pages should keep their existing behavior.
+    if (!submissionId || !slug || !problem?.id) return;
+
+    const controller = new AbortController();
+
+    async function loadSavedSubmission() {
+      try {
+        const response = await apiFetch(
+          `${API_URL}/submissions/public/${encodeURIComponent(submissionId)}`,
+          {
+            signal: controller.signal,
+            refreshOn401: false,
+          }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Unable to load this submission."
+          );
+        }
+
+        // Prevent displaying a submission under the wrong problem URL.
+        if (String(data.problemId) !== String(problem.id)) {
+          throw new Error(
+            "This submission does not belong to this problem."
+          );
+        }
+
+        const savedLanguage = String(
+          data.language || "javascript"
+        ).toLowerCase();
+
+        if (!LANGUAGES.some((item) => item.id === savedLanguage)) {
+          throw new Error(
+            `Unsupported submission language: ${data.language}`
+          );
+        }
+
+        if (typeof data.sourceCode !== "string") {
+          throw new Error("The saved source code is unavailable.");
+        }
+
+        // Load the saved code into its original language.
+        setLanguage(savedLanguage);
+        setSourceByLanguage((current) => ({
+          ...current,
+          [savedLanguage]: data.sourceCode,
+        }));
+
+        // Reuse the existing submission-result UI.
+        setSubmission(data);
+        setSubmitError("");
+        setSubmitBusy(false);
+        setSubmitPollingTimedOut(false);
+        setShowResultTab(true);
+        setActiveTab("result");
+      } catch (error) {
+        if (error.name === "AbortError") return;
+
+        setSubmitError(
+          error.message || "Unable to load this submission."
+        );
+        setShowResultTab(true);
+        setActiveTab("result");
+      }
+    }
+
+    loadSavedSubmission();
+
+    return () => controller.abort();
+  }, [submissionId, slug, problem?.id]);
+
   useEffect(() => () => stopPolling(), [stopPolling]);
+
   const applySubmissionSnapshot = useCallback((data, mode) => {
     const result = resultPayload(data);
     const cases = getCaseResults(data);
@@ -182,6 +261,7 @@ export default function ProblemWorkspacePage() {
 
       setRunBusy(false);
       setRunPollingTimedOut(false);
+      setSubmissionsRefreshKey((key) => key + 1);
       setBusyMode(null);
       stopPolling();
       pollSequence.current += 1;
@@ -202,6 +282,7 @@ export default function ProblemWorkspacePage() {
 
     setSubmitBusy(false);
     setSubmitPollingTimedOut(false);
+    setSubmissionsRefreshKey((key) => key + 1);
     setShowResultTab(true);
     setActiveTab("result");
     setBusyMode(null);
@@ -214,6 +295,7 @@ export default function ProblemWorkspacePage() {
 
     return true;
   }, [stopPolling]);
+
   const fetchSubmissionSnapshot = useCallback(
     async (submissionId, mode, isCurrent = () => true) => {
       const response = await apiFetch(
@@ -236,6 +318,7 @@ export default function ProblemWorkspacePage() {
     },
     [applySubmissionSnapshot]
   );
+
   const startPolling = useCallback((submissionId, mode) => {
     stopPolling();
     const sequence = ++pollSequence.current;
@@ -288,6 +371,7 @@ export default function ProblemWorkspacePage() {
     }
     poll();
   }, [stopPolling, fetchSubmissionSnapshot]);
+
   useEffect(() => {
     let disposed = false;
     let reconnectTimer = null;
@@ -488,6 +572,7 @@ export default function ProblemWorkspacePage() {
       }
     };
   }, [applySubmissionSnapshot, fetchSubmissionSnapshot, startPolling, stopPolling]);
+
   const execute = async (mode) => {
     if (busyMode || !problem) return;
 
@@ -550,6 +635,7 @@ export default function ProblemWorkspacePage() {
         throw new Error("The API did not return an execution ID.");
       }
       const submissionId = String(data.id);
+      setSubmissionsRefreshKey((key) => key + 1);
       activeSubmissionRef.current = {
         id: submissionId,
         mode,
@@ -606,6 +692,7 @@ export default function ProblemWorkspacePage() {
       setBusyMode(null);
     }
   };
+
   const startResize = useCallback((event, direction) => {
     event.preventDefault();
     const workspace = workspaceRef.current;
@@ -642,6 +729,7 @@ export default function ProblemWorkspacePage() {
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }, []);
+
   if (loading) {
     return (
       <div className={styles.site}>
@@ -707,6 +795,10 @@ export default function ProblemWorkspacePage() {
               firstFailure,
               submitPollingTimedOut,
               pretty,
+            }}
+            submissionsProps={{
+              problemId: problem.id,
+              refreshKey: submissionsRefreshKey,
             }}
           />
 

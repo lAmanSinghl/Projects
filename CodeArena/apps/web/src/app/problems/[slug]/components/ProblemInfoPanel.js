@@ -2,6 +2,7 @@ import styles from "../page.module.css";
 import { Difficulty, Icon } from "./WorkspacePrimitives";
 import ProblemDescriptionPanel from "./ProblemDescriptionPanel";
 import SubmissionResultPanel from "./SubmissionResultPanel";
+import ProblemSubmissionsPanel from "./ProblemSubmissionsPanel";
 
 export default function ProblemInfoPanel({
   problem,
@@ -10,6 +11,7 @@ export default function ProblemInfoPanel({
   showResultTab,
   descriptionProps,
   submissionResultProps,
+  submissionsProps,
 }) {
   return (
     <section className={styles.panel}>
@@ -22,6 +24,15 @@ export default function ProblemInfoPanel({
           >
             <Icon name="file" />
             Description
+          </button>
+
+          <button
+            type="button"
+            className={activeTab === "submissions" ? styles.activeTab : ""}
+            onClick={() => setActiveTab("submissions")}
+          >
+            <Icon name="history" />
+            Submissions
           </button>
 
           {showResultTab && (
@@ -41,6 +52,8 @@ export default function ProblemInfoPanel({
       <div className={styles.leftBody}>
         {activeTab === "description" ? (
           <ProblemDescriptionPanel {...descriptionProps} />
+        ) : activeTab === "submissions" ? (
+          <ProblemSubmissionsPanel {...submissionsProps} />
         ) : (
           <SubmissionResultPanel {...submissionResultProps} />
         )}
