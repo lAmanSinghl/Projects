@@ -6,9 +6,30 @@ import path from "node:path";
 import languages from "./languages.js";
 import { runSandbox } from "./sandbox.js";
 
+const buildProgram = (languageTemplate, sourceCode) => {
+    if (
+        typeof languageTemplate !== "string" ||
+        !languageTemplate.trim()
+    ) {
+        throw new Error("Language template must be a non-empty string");
+    }
+
+    const placeholder = "{{USER_SOLUTION}}";
+    const occurrences = languageTemplate.split(placeholder).length - 1;
+
+    if (occurrences !== 1) {
+        throw new Error(
+            `Language template must contain exactly one ${placeholder} placeholder`
+        );
+    }
+
+    return languageTemplate.replace(placeholder, sourceCode);
+};
+
 export const executeSubmission = async ({
     language,
     sourceCode,
+    languageTemplate,
     testCases = [],
     onTestCaseResult,
 }) => {
@@ -26,6 +47,8 @@ export const executeSubmission = async ({
         throw new Error("Test cases must be an array");
     }
 
+    const completeProgram = buildProgram(languageTemplate, sourceCode);
+
     const tempDir = await fs.mkdtemp(
         path.join(os.tmpdir(), "codearena-")
     );
@@ -36,12 +59,9 @@ export const executeSubmission = async ({
             path.basename(strategy.sourceFile)
         );
 
-        // The submitted source now contains the complete program,
-        // including the problem setter's main() and input parsing.
-        await fs.writeFile(sourcePath, sourceCode, "utf8");
+        await fs.writeFile(sourcePath, completeProgram, "utf8");
 
-        // The executor treats test input as opaque text.
-        // Each language's main() handles its own input format.
+        // Test input remains opaque text; the program handles parsing.
         const normalizedTestCases = testCases.map((testCase, index) => {
             if (
                 !testCase ||
@@ -69,29 +89,4 @@ export const executeSubmission = async ({
             force: true,
         });
     }
-};
-
-const normalize = (value) => {
-    if (Array.isArray(value)) {
-        return value.map(normalize);
-    }
-
-    if (value !== null && typeof value === "object") {
-        return Object.fromEntries(
-            Object.keys(value)
-                .sort()
-                .map((key) => [key, normalize(value[key])])
-        );
-    }
-
-    return value;
-};
-
-export const judgeOutput = (actualOutput, expectedOutput) => {
-    const actual = JSON.stringify(normalize(actualOutput));
-    const expected = JSON.stringify(normalize(expectedOutput));
-
-    return actual === expected
-        ? "ACCEPTED"
-        : "WRONG_ANSWER";
 };

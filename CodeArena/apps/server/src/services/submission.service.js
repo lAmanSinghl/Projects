@@ -54,122 +54,89 @@ export const createSubmission = async ({
 };
 
 
+
 export const getSubmissionById = async (submissionId, userId) => {
-    const result = await pool.query(
+    const { rows } = await pool.query(
         `SELECT
-            id,
-            user_id,
-            problem_id,
-            language,
-            status,
-            verdict,
-            created_at,
-            started_at,
-            completed_at,
-            execution_time_ms
-         FROM submissions
-         WHERE id = $1 AND user_id = $2`,
+       id,
+       user_id,
+       problem_id,
+       language,
+       status,
+       verdict,
+       source_code,
+       created_at,
+       execution_time_ms,
+       error_output,
+       exit_code,
+       failed_test_case_id,
+       actual_output,
+       passed_test_cases,
+       total_test_cases
+     FROM submissions
+     WHERE id = $1 AND user_id = $2`,
         [submissionId, userId]
     );
 
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
         throw new AppError("Submission not found", 404);
     }
 
-    const submission = result.rows[0];
+    const submission = rows[0];
 
-    const job = await submissionQueue.getJob(
-        `submission-${submissionId}`
-    );
-
-    if (!job || submission.status !== "COMPLETED") {
-        return {
-            ...submission,
-            result: null,
-        };
-    }
-
-    const jobResult = job.returnvalue;
-
-    if (!jobResult) {
-        return {
-            ...submission,
-            result: null,
-        };
-    }
-
-    const evaluatedResults = jobResult.testCaseResults ?? [];
-
-    // Load visibility from the database instead of trusting result metadata.
-    const testCaseIds = evaluatedResults
-        .map((testCase) => testCase.testCaseId)
-        .filter((id) => id !== undefined && id !== null);
-
-    const visibilityResult = testCaseIds.length
-        ? await pool.query(
-              `SELECT id, is_hidden
-               FROM test_cases
-               WHERE id = ANY($1::bigint[])`,
-              [testCaseIds]
-          )
-        : { rows: [] };
-
-    const hiddenById = new Map(
-        visibilityResult.rows.map((row) => [
-            String(row.id),
-            row.is_hidden,
-        ])
-    );
-
-    const publicResults = evaluatedResults
-        .filter(
-            (testCase) =>
-                hiddenById.get(String(testCase.testCaseId)) === false
-        )
-        .map((testCase) => ({
-            testCaseId: testCase.testCaseId,
-            status: testCase.status,
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: testCase.actualOutput,
-            stderr: testCase.stderr,
-            exitCode: testCase.exitCode,
-        }));
-
-    const passedPublicCount = publicResults.filter(
-        (testCase) => testCase.status === "ACCEPTED"
-    ).length;
-
-    const firstFailedPublicCase =
-        jobResult.executionType === "submit"
-            ? publicResults.find(
-                  (testCase) => testCase.status !== "ACCEPTED"
-              ) ?? null
-            : null;
-
-    return {
-        ...submission,
-        result: {
-            executionType: jobResult.executionType,
-            verdict: jobResult.verdict,
-            executionTimeMs: jobResult.executionTimeMs,
-
-            // Public-case counts and details are safe to display.
-            passedCount: passedPublicCount,
-            totalPublicCases: publicResults.length,
-            publicTestCases:
-                jobResult.executionType === "run"
-                    ? publicResults
-                    : undefined,
-            firstFailedPublicCase,
-
-            // Overall evaluated counts include hidden cases, but not their data.
-            evaluatedCount: evaluatedResults.length,
-            passedEvaluatedCount: evaluatedResults.filter(
-                (testCase) => testCase.status === "ACCEPTED"
-            ).length,
-        },
+    const response = {
+        id: submission.id,
+        problemId: submission.problem_id,
+        language: submission.language,
+        status: submission.status,
+        createdAt: submission.created_at,
+        sourceCode: submission.source_code,
+        result: null,
     };
+
+    // Results are available only after processing finishes.
+    if (submission.status !== "COMPLETED") {
+        return response;
+    }
+
+    let failedTestCase = null;
+
+    if (submission.failed_test_case_id !== null) {
+        const { rows: testCases } = await pool.query(
+            `SELECT id, is_hidden, input, expected_output
+       FROM test_cases
+       WHERE id = $1`,
+            [submission.failed_test_case_id]
+        );
+
+        const testCase = testCases[0];
+
+        // Never expose hidden test-case details.
+        if (testCase) {
+            failedTestCase = {
+                id: testCase.id,
+                input: testCase.input,
+                expectedOutput: testCase.expected_output,
+                actualOutput: submission.actual_output,
+            };
+        }
+    }
+
+    response.result = {
+        verdict: submission.verdict,
+        executionTimeMs: submission.execution_time_ms,
+        passedTestCases: submission.passed_test_cases,
+        totalTestCases: submission.total_test_cases,
+        ...(submission.error_output
+            ? { errorOutput: submission.error_output }
+            : {}),
+        ...(submission.exit_code !== null
+            ? { exitCode: submission.exit_code }
+            : {}),
+        ...(failedTestCase ? { failedTestCase } : {}),
+    };
+
+    return response;
 };
 
 
@@ -249,4 +216,28 @@ export const getUserSubmissionStats = async (userId) => {
                 ? 0
                 : Number(((accepted / total) * 100).toFixed(1)),
     };
+};
+
+export const getProblemSubmissions = async ({
+    userId,
+    problemId,
+}) => {
+    const result = await pool.query(
+        `SELECT
+            id,
+            problem_id,
+            language,
+            status,
+            verdict,
+            created_at,
+            completed_at,
+            execution_time_ms
+         FROM submissions
+         WHERE user_id = $1
+           AND problem_id = $2
+         ORDER BY created_at DESC, id DESC`,
+        [userId, problemId]
+    );
+
+    return result.rows;
 };

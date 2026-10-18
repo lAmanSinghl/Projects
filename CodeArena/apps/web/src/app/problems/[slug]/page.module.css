@@ -912,3 +912,82 @@
     padding: 0 10px;
   }
 }
+
+/* Add these rules to page.module.css for the updated workspace JSX. */
+.resetButton {
+  border: 1px solid var(--border, #34382f);
+  background: transparent;
+  color: var(--foreground, #d8ded1);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.resetButton:hover {
+  border-color: #b2c73a;
+  color: #d8ed69;
+}
+
+.caseResultsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  width: 100%;
+}
+
+.caseResultsPanel .caseSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow: visible;
+}
+
+.caseResultsPanel .caseSelector button {
+  max-width: 100%;
+}
+
+.caseResultsPanel .caseDetail {
+  min-height: 0;
+  overflow: auto;
+}
+
+.diagnosticPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(239, 83, 80, 0.35);
+  border-radius: 10px;
+  background: rgba(239, 83, 80, 0.06);
+}
+
+.diagnosticPanel h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.diagnosticPanel pre,
+.diagnosticField pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.diagnosticPanel > span,
+.exitCode {
+  color: var(--muted, #a3aa9b);
+  font-size: 12px;
+}
+
+.diagnosticField {
+  border-color: rgba(239, 83, 80, 0.35);
+}

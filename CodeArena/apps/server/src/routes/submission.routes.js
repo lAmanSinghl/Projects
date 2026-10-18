@@ -7,8 +7,8 @@ import {
     getSubmissionController,
     getUserSubmissionsController,
     getUserSubmissionStatsController,
+    getProblemSubmissionsController,
 } from "../controllers/submission.controller.js";
-
 import authMiddleware from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -25,5 +25,7 @@ router.get("/stats", getUserSubmissionStatsController);
 
 // Retrieve an individual submission and its result.
 router.get("/:id", authMiddleware, getSubmissionController);
+
+router.get("/problem/:problemId",authMiddleware,getProblemSubmissionsController);
 
 export default router;

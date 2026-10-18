@@ -1,4 +1,3 @@
-
 import { executeSubmission } from "./executor.js";
 import { judgeOutput } from "./judge.js";
 
@@ -23,9 +22,8 @@ const EXECUTION_VERDICTS = {
 export const runSubmission = async ({
     language,
     sourceCode,
+    languageTemplate,
     testCases,
-    functionName,
-    functionConfig,
     executionType,
 }) => {
     if (!["run", "submit"].includes(executionType)) {
@@ -38,9 +36,8 @@ export const runSubmission = async ({
     const execution = await executeSubmission({
         language,
         sourceCode,
+        languageTemplate,
         testCases,
-        functionName,
-        functionConfig,
 
         onTestCaseResult: async (executionResult) => {
             const index = executionResult.testCaseIndex;
@@ -93,31 +90,28 @@ export const runSubmission = async ({
                 actualOutput,
                 stderr: executionResult.stderr ?? "",
                 exitCode: executionResult.exitCode ?? null,
+                executionTimeMs:
+                    executionResult.executionTimeMs ?? null,
             });
-
 
             if (caseVerdict === "WRONG_ANSWER") {
                 overallVerdict = "WRONG_ANSWER";
 
-                // Run continues to show every public test case.
+                // Run continues through public test cases.
                 // Submit stops at the first wrong answer.
                 return executionType === "run";
             }
 
             if (caseVerdict === "ACCEPTED") {
-                // Keep evaluating the remaining test cases.
-                // Do not overwrite a previous wrong answer.
                 return true;
             }
 
             if (caseVerdict) {
-                // Stop on compilation, runtime, or other errors.
                 overallVerdict = caseVerdict;
                 return false;
             }
 
             return true;
-
         },
     });
 
@@ -125,6 +119,8 @@ export const runSubmission = async ({
         return {
             executionType,
             verdict: "INTERNAL_ERROR",
+            executionTimeMs:
+                execution.executionTimeMs ?? null,
             testCaseResults,
             stderr: execution.stderr ?? "",
             exitCode: execution.exitCode ?? null,
@@ -154,6 +150,8 @@ export const runSubmission = async ({
                 actualOutput: failedExecution.stdout ?? "",
                 stderr: failedExecution.stderr ?? "",
                 exitCode: failedExecution.exitCode ?? null,
+                executionTimeMs:
+                    failedExecution.executionTimeMs ?? null,
             });
         }
     } else if (execution.status === "INTERNAL_ERROR") {
@@ -167,6 +165,7 @@ export const runSubmission = async ({
     return {
         executionType,
         verdict: overallVerdict,
+        executionTimeMs: execution.executionTimeMs ?? null,
         testCaseResults,
         stderr: execution.stderr ?? "",
         exitCode: execution.exitCode ?? null,

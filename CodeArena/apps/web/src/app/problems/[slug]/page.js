@@ -183,9 +183,11 @@ export default function ProblemWorkspacePage() {
 
   const [language, setLanguage] = useState("javascript");
   const [sourceByLanguage, setSourceByLanguage] = useState(STARTER_CODE);
+  const [starterByLanguage, setStarterByLanguage] = useState(STARTER_CODE);
   const [activeTab, setActiveTab] = useState("description");
   const [bottomTab, setBottomTab] = useState("testcases");
   const [activeTestCase, setActiveTestCase] = useState(0);
+  const [activeRunResult, setActiveRunResult] = useState(0);
   const [showResultTab, setShowResultTab] = useState(false);
 
   const [leftWidth, setLeftWidth] = useState(56);
@@ -281,13 +283,15 @@ export default function ProblemWorkspacePage() {
         const configuredStarter =
           loadedProblem?.starter_code || loadedProblem?.starterCode;
 
-        if (configuredStarter && typeof configuredStarter === "object") {
-          setSourceByLanguage((current) => ({
-            ...STARTER_CODE,
-            ...current,
-            ...configuredStarter,
-          }));
-        }
+        // The problem API's starter code is the source of truth for both
+        // the initial editor contents and the Reset action.
+        const nextStarter =
+          configuredStarter && typeof configuredStarter === "object"
+            ? { ...STARTER_CODE, ...configuredStarter }
+            : STARTER_CODE;
+
+        setStarterByLanguage(nextStarter);
+        setSourceByLanguage(nextStarter);
       } catch (error) {
         if (error.name !== "AbortError") {
           setLoadError(error.message || "Something went wrong.");
@@ -357,6 +361,7 @@ export default function ProblemWorkspacePage() {
           if (mode === "run") {
             setBottomTab("testresult");
             setRunResults(cases);
+            setActiveRunResult(0);
           }
 
           if (mode === "submit") {
@@ -397,6 +402,7 @@ export default function ProblemWorkspacePage() {
 
     if (mode === "run") {
       setRunResults([]);
+      setActiveRunResult(0);
       setBottomTab("testcases");
       setActiveTab("description");
     } else {
@@ -498,46 +504,83 @@ export default function ProblemWorkspacePage() {
     window.addEventListener("pointerup", onUp);
   }, []);
 
-  const renderCaseResults = (items) => (
-    <div className={styles.runResultList}>
-      {items.map((item, index) => {
-        const state = String(
-          item.status || item.verdict || "UNKNOWN"
-        ).toUpperCase();
+  const renderCaseResults = (items) => {
+    if (!items.length) return null;
 
-        const passed = isPassed(item);
+    const selectedIndex = Math.min(activeRunResult, items.length - 1);
+    const item = items[selectedIndex];
+    const state = String(item?.status || item?.verdict || "UNKNOWN").toUpperCase();
+    const passed = isPassed(item);
+    const stderr = String(item?.stderr ?? "").trim();
 
-        return (
-          <article
-            className={styles.runResultCard}
-            key={item.testCaseId ?? item.test_case_id ?? index}
-          >
-            <div className={styles.runResultHeading}>
-              <strong>Case {index + 1}</strong>
-              <span className={passed ? styles.passLabel : styles.failLabel}>
-                {passed ? "✓ Passed" : `× ${state.replaceAll("_", " ")}`}
-              </span>
-            </div>
+    return (
+      <div className={styles.caseResultsPanel}>
+        <div className={styles.caseSelector} role="tablist" aria-label="Test case results">
+          {items.map((resultItem, index) => {
+            const resultStatus = String(
+              resultItem?.status || resultItem?.verdict || "UNKNOWN"
+            ).toUpperCase();
+            const resultPassed = isPassed(resultItem);
 
+            return (
+              <button
+                key={resultItem.testCaseId ?? resultItem.test_case_id ?? index}
+                type="button"
+                role="tab"
+                aria-selected={selectedIndex === index}
+                className={selectedIndex === index ? styles.activeCase : ""}
+                onClick={() => setActiveRunResult(index)}
+              >
+                Case {index + 1}
+                <span className={resultPassed ? styles.passLabel : styles.failLabel}>
+                  {resultPassed ? " ✓" : ` · ${resultStatus.replaceAll("_", " ")}`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <article className={styles.caseDetail} role="tabpanel">
+          <div className={styles.runResultHeading}>
+            <strong>Case {selectedIndex + 1}</strong>
+            <span className={passed ? styles.passLabel : styles.failLabel}>
+              {passed ? "✓ Passed" : `× ${state.replaceAll("_", " ")}`}
+            </span>
+          </div>
+
+          {item.input !== undefined && (
             <div className={styles.exampleField}>
               <span>Input</span>
-              <pre>{pretty(item.input ?? item.testCaseInput)}</pre>
+              <pre>{pretty(item.input)}</pre>
             </div>
+          )}
 
+          {item.expectedOutput !== undefined && item.expectedOutput !== null && (
             <div className={styles.exampleField}>
               <span>Expected output</span>
-              <pre>{pretty(item.expectedOutput ?? item.expected_output)}</pre>
+              <pre>{pretty(item.expectedOutput)}</pre>
             </div>
+          )}
 
-            <div className={styles.exampleField}>
-              <span>Your output</span>
-              <pre>{pretty(item.actualOutput ?? item.actual_output ?? item.stdout)}</pre>
+          <div className={styles.exampleField}>
+            <span>Your output</span>
+            <pre>{pretty(item.actualOutput ?? item.actual_output ?? item.stdout)}</pre>
+          </div>
+
+          {stderr && (
+            <div className={`${styles.exampleField} ${styles.diagnosticField}`}>
+              <span>Error output</span>
+              <pre>{stderr}</pre>
             </div>
-          </article>
-        );
-      })}
-    </div>
-  );
+          )}
+
+          {item.exitCode !== undefined && item.exitCode !== null && item.exitCode !== 0 && (
+            <div className={styles.exitCode}>Exit code: {item.exitCode}</div>
+          )}
+        </article>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -669,6 +712,11 @@ export default function ProblemWorkspacePage() {
                 <section className={styles.submissionResult}>
                   {submissionError ? (
                     <p className={styles.inlineError}>{submissionError}</p>
+                  ) : busyMode === "run" ? (
+                    <div className={styles.waiting}>
+                      <h2>Run in progress</h2>
+                      <p>Run results will appear in the Test Result panel below.</p>
+                    </div>
                   ) : busyMode === "submit" ? (
                     <div className={styles.waiting}>
                       <span className={styles.spinner} />
@@ -729,6 +777,24 @@ export default function ProblemWorkspacePage() {
                           </strong>
                         </div>
                       </div>
+
+                      {(submissionResult?.stderr || submissionResult?.exitCode != null) && (
+                        <section className={styles.diagnosticPanel}>
+                          <h2>
+                            {latestStatus === "COMPILATION_ERROR"
+                              ? "Compiler output"
+                              : "Execution diagnostics"}
+                          </h2>
+                          {submissionResult?.stderr ? (
+                            <pre>{String(submissionResult.stderr)}</pre>
+                          ) : (
+                            <p>No error output was produced.</p>
+                          )}
+                          {submissionResult?.exitCode != null && (
+                            <span>Exit code: {submissionResult.exitCode}</span>
+                          )}
+                        </section>
+                      )}
 
                       {latestStatus !== "ACCEPTED" && firstFailure && (
                         <section className={styles.failedCase}>
@@ -791,6 +857,21 @@ export default function ProblemWorkspacePage() {
                   <span className={styles.liveDot} />
                   <strong>Code</strong>
                 </div>
+
+                <button
+                  type="button"
+                  className={styles.resetButton}
+                  onClick={() => {
+                    setSourceByLanguage((current) => ({
+                      ...current,
+                      [language]: starterByLanguage[language] ?? STARTER_CODE[language] ?? "",
+                    }));
+                    setSubmissionError("");
+                  }}
+                  title="Restore the original starter code for this language"
+                >
+                  Reset code
+                </button>
 
                 <label className={styles.languageSelect}>
                   <span className={styles.srOnly}>Programming language</span>
@@ -964,7 +1045,28 @@ export default function ProblemWorkspacePage() {
                       <p className={styles.inlineError}>{submissionError}</p>
                     )}
 
-                    {!busyMode && runResults.length === 0 && !submissionError && (
+                    {busyMode !== "submit" &&
+                      latestStatus &&
+                      terminal &&
+                      (submissionResult?.stderr || submissionResult?.exitCode != null) && (
+                        <section className={styles.diagnosticPanel}>
+                          <h2>
+                            {latestStatus === "COMPILATION_ERROR"
+                              ? "Compiler output"
+                              : "Execution diagnostics"}
+                          </h2>
+                          {submissionResult?.stderr ? (
+                            <pre>{String(submissionResult.stderr)}</pre>
+                          ) : (
+                            <p>No error output was produced.</p>
+                          )}
+                          {submissionResult?.exitCode != null && (
+                            <span>Exit code: {submissionResult.exitCode}</span>
+                          )}
+                        </section>
+                      )}
+
+                    {!busyMode && runResults.length === 0 && !submissionError && !submissionResult?.stderr && (
                       <div className={styles.emptyState}>
                         <Icon name="play" size={22} />
                         <strong>No run results yet</strong>

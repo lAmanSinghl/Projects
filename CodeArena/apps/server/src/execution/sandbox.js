@@ -1,4 +1,3 @@
-
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -20,7 +19,6 @@ const runProcess = (
     }
 ) =>
     new Promise((resolve, reject) => {
-
         const child = spawn(command, args, {
             stdio: ["pipe", "pipe", "pipe"],
         });
@@ -47,15 +45,14 @@ const runProcess = (
         };
 
         const stopProcess = (reason) => {
-
             if (settled) return;
 
             if (reason === "TIME_LIMIT") {
                 timedOut = true;
-                Promise.resolve(onTimeout?.()).catch(() => { });
+                Promise.resolve(onTimeout?.()).catch(() => {});
             } else {
                 outputLimitExceeded = true;
-                Promise.resolve(onOutputLimit?.()).catch(() => { });
+                Promise.resolve(onOutputLimit?.()).catch(() => {});
             }
 
             child.kill("SIGTERM");
@@ -103,7 +100,7 @@ const runProcess = (
         });
 
         if (input !== undefined) {
-            child.stdin.on("error", () => { });
+            child.stdin.on("error", () => {});
             child.stdin.end(input);
         } else {
             child.stdin.end();
@@ -135,7 +132,6 @@ const inspectMemoryLimit = async (containerId) => {
     }
 };
 
-
 export const runSandbox = async ({
     image,
     sourceDir,
@@ -144,16 +140,22 @@ export const runSandbox = async ({
     testCases = [],
     onTestCaseResult,
 }) => {
+    const sandboxStartedAt = performance.now();
+
     let containerId;
+    let totalExecutionTimeMs = 0;
 
     try {
+        // 1. Create and start the sandbox container.
+        const setupStartedAt = performance.now();
+
         const { stdout: createOutput } = await execFileAsync(
             "docker",
             [
                 "create",
                 "-i",
                 "--memory=512m",
-                "--cpus=0.5",
+                "--cpus=2",
                 "--pids-limit=64",
                 "--cap-drop=ALL",
                 "--security-opt=no-new-privileges",
@@ -174,8 +176,16 @@ export const runSandbox = async ({
 
         await execFileAsync("docker", ["start", containerId]);
 
-        // Compile once for the entire submission.
+        console.log(
+            `[Sandbox] Container create + start: ${
+                (performance.now() - setupStartedAt).toFixed(0)
+            } ms`
+        );
+
+        // 2. Compile once. Compilation is not included in runtime.
         if (compileCommand) {
+            const compileStartedAt = performance.now();
+
             const compilation = await runProcess(
                 "docker",
                 ["exec", containerId, ...compileCommand],
@@ -192,6 +202,7 @@ export const runSandbox = async ({
                     stderr: compilation.stderr,
                     exitCode: compilation.exitCode,
                     results: [],
+                    executionTimeMs: null,
                 };
             }
 
@@ -201,11 +212,12 @@ export const runSandbox = async ({
                 return {
                     status: "OUTPUT_LIMIT",
                     results: [],
+                    executionTimeMs: null,
                 };
             }
 
             if (compilation.exitCode !== 0) {
-                console.error("C++ COMPILATION FAILED");
+                console.error("COMPILATION FAILED");
                 console.error("Image:", image);
                 console.error("Exit code:", compilation.exitCode);
                 console.error("Compiler stdout:", compilation.stdout);
@@ -217,14 +229,25 @@ export const runSandbox = async ({
                     stderr: compilation.stderr,
                     exitCode: compilation.exitCode,
                     results: [],
+                    executionTimeMs: null,
                 };
             }
+
+            console.log(
+                `[Sandbox] Compile (${image}): ${
+                    (performance.now() - compileStartedAt).toFixed(0)
+                } ms | exitCode=${compilation.exitCode}`
+            );
         }
 
+        // 3. Execute test cases one at a time.
         const results = [];
 
         for (let index = 0; index < testCases.length; index++) {
             const testCase = testCases[index];
+
+            // Measures elapsed time around the complete docker exec request.
+            const testStartedAt = performance.now();
 
             const execution = await runProcess(
                 "docker",
@@ -237,14 +260,27 @@ export const runSandbox = async ({
                 }
             );
 
+            const executionTimeMs = Math.round(
+                performance.now() - testStartedAt
+            );
+
+            totalExecutionTimeMs += executionTimeMs;
+
+            console.log(
+                `[Sandbox] Test case ${index + 1}/${testCases.length}: ` +
+                `${executionTimeMs} ms | exitCode=${execution.exitCode}`
+            );
+
             const testResult = {
                 testCaseId: testCase.id,
                 testCaseIndex: index,
                 stdout: execution.stdout,
                 stderr: execution.stderr,
                 exitCode: execution.exitCode,
+                executionTimeMs,
             };
 
+            // Output limit exceeded.
             if (execution.outputLimitExceeded) {
                 const result = {
                     ...testResult,
@@ -257,9 +293,11 @@ export const runSandbox = async ({
                 return {
                     status: "OUTPUT_LIMIT",
                     results,
+                    executionTimeMs: totalExecutionTimeMs,
                 };
             }
 
+            // Execution timed out.
             if (execution.timedOut) {
                 const result = {
                     ...testResult,
@@ -272,9 +310,11 @@ export const runSandbox = async ({
                 return {
                     status: "TIME_LIMIT",
                     results,
+                    executionTimeMs: totalExecutionTimeMs,
                 };
             }
 
+            // Memory limit exceeded.
             if (await inspectMemoryLimit(containerId)) {
                 const result = {
                     ...testResult,
@@ -287,9 +327,11 @@ export const runSandbox = async ({
                 return {
                     status: "MEMORY_LIMIT",
                     results,
+                    executionTimeMs: totalExecutionTimeMs,
                 };
             }
 
+            // Program exited with an error.
             if (execution.exitCode !== 0) {
                 const result = {
                     ...testResult,
@@ -302,9 +344,11 @@ export const runSandbox = async ({
                 return {
                     status: "RUNTIME_ERROR",
                     results,
+                    executionTimeMs: totalExecutionTimeMs,
                 };
             }
 
+            // Program executed successfully; judging happens in the callback.
             const result = {
                 ...testResult,
                 status: "EXECUTED",
@@ -312,8 +356,6 @@ export const runSandbox = async ({
 
             results.push(result);
 
-            // Judge immediately after each successful execution.
-            // false means stop without executing the next case.
             const shouldContinue = await onTestCaseResult?.(result);
 
             if (shouldContinue === false) {
@@ -321,6 +363,7 @@ export const runSandbox = async ({
                     status: "STOPPED",
                     results,
                     stoppedEarly: true,
+                    executionTimeMs: totalExecutionTimeMs,
                 };
             }
         }
@@ -328,12 +371,14 @@ export const runSandbox = async ({
         return {
             status: "COMPLETED",
             results,
+            executionTimeMs: totalExecutionTimeMs,
         };
     } catch (error) {
         return {
             status: "RUNTIME_ERROR",
             results: [],
             stderr: error.message,
+            executionTimeMs: totalExecutionTimeMs,
         };
     } finally {
         if (containerId) {
@@ -347,5 +392,11 @@ export const runSandbox = async ({
                 // Do not replace the execution result with a cleanup error.
             }
         }
+
+        console.log(
+            `[Sandbox] Total time: ${
+                (performance.now() - sandboxStartedAt).toFixed(0)
+            } ms`
+        );
     }
 };

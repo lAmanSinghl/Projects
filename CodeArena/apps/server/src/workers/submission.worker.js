@@ -1,3 +1,4 @@
+
 import { Worker } from "bullmq";
 
 import pool from "../db.js";
@@ -12,7 +13,7 @@ import {
 const worker = new Worker(
     "submissions",
     async (job) => {
-        const { submissionId, executionType } = job.data;
+        const { submissionId, executionType } = job.data ?? {};
 
         if (!["run", "submit"].includes(executionType)) {
             throw new Error("Invalid execution type");
@@ -26,15 +27,23 @@ const worker = new Worker(
             `Processing submission ${submissionId} (${executionType})`
         );
 
-        let submission;
-
         try {
-            // Mark the submission as processing.
+            // 1. Mark submission as PROCESSING and clear stale results.
             const submissionResult = await pool.query(
                 `UPDATE submissions
                  SET status = 'PROCESSING',
-                     started_at = CURRENT_TIMESTAMP
+                     started_at = CURRENT_TIMESTAMP,
+                     completed_at = NULL,
+                     verdict = NULL,
+                     error_output = NULL,
+                     exit_code = NULL,
+                     execution_time_ms = NULL,
+                     failed_test_case_id = NULL,
+                     actual_output = NULL,
+                     passed_test_cases = 0,
+                     total_test_cases = 0
                  WHERE id = $1
+                   AND status <> 'COMPLETED'
                  RETURNING
                      id,
                      user_id,
@@ -45,19 +54,46 @@ const worker = new Worker(
                 [submissionId]
             );
 
+            // A retry may encounter a submission that already completed.
             if (submissionResult.rows.length === 0) {
+                const existingResult = await pool.query(
+                    `SELECT id, status
+                     FROM submissions
+                     WHERE id = $1`,
+                    [submissionId]
+                );
+
+                if (existingResult.rows.length === 0) {
+                    throw new Error(
+                        `Submission ${submissionId} not found`
+                    );
+                }
+
+                if (existingResult.rows[0].status === "COMPLETED") {
+                    console.log(
+                        `Submission ${submissionId} is already COMPLETED; skipping retry`
+                    );
+
+                    return {
+                        submissionId,
+                        skipped: true,
+                        reason: "Submission already completed",
+                    };
+                }
+
                 throw new Error(
-                    `Submission ${submissionId} not found`
+                    `Could not mark submission ${submissionId} as PROCESSING`
                 );
             }
 
-            submission = submissionResult.rows[0];
+            const submission = submissionResult.rows[0];
 
-            // Fetch problem configuration.
+            // 2. Load the trusted language template.
             const problemResult = await pool.query(
-                `SELECT function_name, function_config, starter_code
+                `SELECT language_templates
                  FROM problems
-                 WHERE id = $1 AND deleted_at IS NULL`,
+                 WHERE id = $1
+                   AND deleted_at IS NULL`,
                 [submission.problem_id]
             );
 
@@ -69,28 +105,30 @@ const worker = new Worker(
 
             const problem = problemResult.rows[0];
 
-            if (!problem.function_name) {
-                throw new Error(
-                    `Problem ${submission.problem_id} has no function name`
-                );
-            }
+            const languageTemplate =
+                problem.language_templates?.[submission.language];
 
             if (
-                !problem.function_config ||
-                !Array.isArray(problem.function_config.parameters)
+                typeof languageTemplate !== "string" ||
+                !languageTemplate.trim()
             ) {
                 throw new Error(
-                    `Problem ${submission.problem_id} has an invalid function configuration`
+                    `Execution template unavailable for language: ${submission.language}`
                 );
             }
 
-            if (!problem.starter_code?.[submission.language]) {
+            const placeholder = "{{USER_SOLUTION}}";
+            const occurrences =
+                languageTemplate.split(placeholder).length - 1;
+
+            if (occurrences !== 1) {
                 throw new Error(
-                    `Starter code unavailable for language: ${submission.language}`
+                    `Invalid execution template for ${submission.language}: ` +
+                    `expected exactly one ${placeholder} placeholder`
                 );
             }
 
-            // Notify the user that execution has started.
+            // 3. Notify the user that execution has started.
             await publishSubmissionEvent({
                 type: "SUBMISSION_STATUS",
                 submissionId: submission.id,
@@ -98,13 +136,12 @@ const worker = new Worker(
                 status: "PROCESSING",
             });
 
-            // Fetch all test cases for this problem.
+            // 4. Load the appropriate test cases.
             const allTestCases =
                 await getAllTestCasesByProblemId(
                     submission.problem_id
                 );
 
-            // Run uses public cases; Submit uses public and hidden cases.
             const testCases =
                 executionType === "run"
                     ? allTestCases.filter(
@@ -114,7 +151,8 @@ const worker = new Worker(
 
             if (testCases.length === 0) {
                 throw new Error(
-                    `No ${executionType === "run" ? "public " : ""
+                    `No ${
+                        executionType === "run" ? "public " : ""
                     }test cases found for problem ${submission.problem_id}`
                 );
             }
@@ -123,58 +161,140 @@ const worker = new Worker(
                 `Running ${testCases.length} test cases for submission ${submissionId}`
             );
 
-            const executionStart = process.hrtime.bigint();
-
-            // Execute using the selected execution type.
+            // 5. Execute and judge the submission.
             const result = await runSubmission({
                 language: submission.language,
                 sourceCode: submission.source_code,
+                languageTemplate,
                 testCases,
-                functionName: problem.function_name,
-                functionConfig: problem.function_config,
                 executionType,
             });
 
             console.log(
-                "Test-case verdict summary:",
-                (result.testCaseResults ?? []).map(
-                    (testCaseResult) => ({
-                        testCaseId: testCaseResult.testCaseId,
-                        status: testCaseResult.status,
-                    })
-                )
+                "Execution result:",
+                JSON.stringify(result, null, 2)
             );
 
-            const executionEnd = process.hrtime.bigint();
+            const executionTimeMs =
+                Number.isFinite(result.executionTimeMs) &&
+                result.executionTimeMs >= 0
+                    ? Math.round(result.executionTimeMs)
+                    : null;
 
-            const executionTimeMs = Math.round(
-                Number(executionEnd - executionStart) / 1_000_000
+            // Match results against trusted database test cases.
+            const testCasesById = new Map(
+                testCases.map((testCase) => [
+                    String(testCase.id),
+                    testCase,
+                ])
             );
+
+            const matchedResults = (
+                result.testCaseResults ?? []
+            ).map((testCaseResult) => {
+                const testCase = testCasesById.get(
+                    String(testCaseResult.testCaseId)
+                );
+
+                if (!testCase) {
+                    throw new Error(
+                        `Could not match result to test case ${testCaseResult.testCaseId}`
+                    );
+                }
+
+                return {
+                    ...testCaseResult,
+                    isHidden: testCase.is_hidden,
+                    input: testCase.is_hidden
+                        ? undefined
+                        : testCase.input,
+                    expectedOutput: testCase.is_hidden
+                        ? undefined
+                        : testCase.expected_output,
+                };
+            });
+
+            // 6. Calculate the submission summary.
+            const passedTestCases = matchedResults.filter(
+                (testCase) => testCase.status === "ACCEPTED"
+            ).length;
+
+            // Keep the first non-accepted test case.
+            const failedTestCase =
+                matchedResults.find(
+                    (testCase) => testCase.status !== "ACCEPTED"
+                ) ?? null;
+
+            const failedTestCaseId =
+                failedTestCase?.testCaseId ?? null;
+
+            const actualOutputJson =
+                failedTestCase?.actualOutput == null
+                    ? null
+                    : JSON.stringify(failedTestCase.actualOutput);
+
+            // Includes all selected cases, even if execution stopped early.
+            const totalTestCases = testCases.length;
+
+            // Keep hidden test-case details out of the BullMQ return value.
+            const publicFailedTestCase =
+                failedTestCase && !failedTestCase.isHidden
+                    ? failedTestCase
+                    : null;
+
+            // 7. Persist the result transactionally.
+            const client = await pool.connect();
+
+            try {
+                await client.query("BEGIN");
+
+                await client.query(
+                    `UPDATE submissions
+                     SET status = 'COMPLETED',
+                         verdict = $1,
+                         completed_at = CURRENT_TIMESTAMP,
+                         execution_time_ms = $2,
+                         error_output = $3,
+                         exit_code = $4,
+                         failed_test_case_id = $5,
+                         actual_output = $6::jsonb,
+                         passed_test_cases = $7,
+                         total_test_cases = $8
+                     WHERE id = $9`,
+                    [
+                        result.verdict,
+                        executionTimeMs,
+                        result.stderr ?? "",
+                        result.exitCode ?? null,
+                        failedTestCaseId,
+                        actualOutputJson,
+                        passedTestCases,
+                        totalTestCases,
+                        submissionId,
+                    ]
+                );
+
+                await client.query("COMMIT");
+            } catch (error) {
+                await client.query("ROLLBACK");
+                throw error;
+            } finally {
+                client.release();
+            }
 
             console.log(
                 `Submission ${submissionId} verdict: ${result.verdict}`
             );
 
             console.log(
-                `Submission ${submissionId} execution time: ${executionTimeMs} ms`
+                `Submission ${submissionId} runtime: ${
+                    executionTimeMs === null
+                        ? "not available"
+                        : `${executionTimeMs} ms`
+                }`
             );
 
-            // Persist the final submission status and verdict.
-            await pool.query(
-                `UPDATE submissions
-                 SET status = 'COMPLETED',
-                     verdict = $1,
-                     completed_at = CURRENT_TIMESTAMP,
-                     execution_time_ms = $2
-                 WHERE id = $3`,
-                [
-                    result.verdict,
-                    executionTimeMs,
-                    submissionId,
-                ]
-            );
-
-            // Notify the user that execution has completed.
+            // 8. Notify the user that execution has finished.
             await publishSubmissionEvent({
                 type: "SUBMISSION_STATUS",
                 submissionId: submission.id,
@@ -183,80 +303,50 @@ const worker = new Worker(
                 verdict: result.verdict,
             });
 
-            // Match execution results to their original test cases.
-            const testCasesById = new Map(
-                testCases.map((testCase) => [
-                    String(testCase.id),
-                    testCase,
-                ])
-            );
-
-            // Keep detailed results in BullMQ for result retrieval.
+            // 9. Return safe details to BullMQ consumers.
             return {
                 submissionId: submission.id,
                 executionType,
                 verdict: result.verdict,
                 executionTimeMs,
+                passedTestCases,
+                totalTestCases,
 
-                testCaseResults: (
-                    result.testCaseResults ?? []
-                ).map((testCaseResult) => {
-                    const testCase = testCasesById.get(
-                        String(testCaseResult.testCaseId)
-                    );
+                failedTestCaseId:
+                    publicFailedTestCase?.testCaseId ?? null,
 
-                    if (!testCase) {
-                        throw new Error(
-                            `Could not match result to test case ${testCaseResult.testCaseId}`
-                        );
+                actualOutput:
+                    publicFailedTestCase?.actualOutput ?? null,
+
+                failedTestCase: publicFailedTestCase
+                    ? {
+                        testCaseId:
+                            publicFailedTestCase.testCaseId,
+                        status: publicFailedTestCase.status,
+                        input: publicFailedTestCase.input,
+                        expectedOutput:
+                            publicFailedTestCase.expectedOutput,
+                        actualOutput:
+                            publicFailedTestCase.actualOutput ?? null,
+                        stderr:
+                            publicFailedTestCase.stderr ?? "",
+                        exitCode:
+                            publicFailedTestCase.exitCode ?? null,
                     }
+                    : null,
 
-                    return {
-                        ...testCaseResult,
-                        isHidden: testCase.is_hidden,
-                        input: testCase.input,
-                        expectedOutput: testCase.expected_output,
-                    };
-                }),
-
-                stderr: result.stderr,
-                exitCode: result.exitCode,
+                stderr: result.stderr ?? "",
+                exitCode: result.exitCode ?? null,
             };
         } catch (error) {
             console.error(
-                `Submission ${submissionId} failed:`,
+                `Submission ${submissionId} processing attempt failed:`,
                 error
             );
 
-            try {
-                await pool.query(
-                    `UPDATE submissions
-                     SET status = 'FAILED',
-                         completed_at = CURRENT_TIMESTAMP
-                     WHERE id = $1`,
-                    [submissionId]
-                );
-            } catch (updateError) {
-                console.error(
-                    `Failed to mark submission ${submissionId} as FAILED:`,
-                    updateError
-                );
-            }
-
-            try {
-                await publishSubmissionEvent({
-                    type: "SUBMISSION_STATUS",
-                    submissionId,
-                    userId: submission?.user_id,
-                    status: "FAILED",
-                });
-            } catch (publishError) {
-                console.error(
-                    `Failed to publish failure event for submission ${submissionId}:`,
-                    publishError
-                );
-            }
-
+            // Do not mark FAILED here. BullMQ may retry this job.
+            // The failed event handler below persists FAILED only
+            // after the job reaches its terminal failed state.
             throw error;
         }
     },
@@ -265,13 +355,90 @@ const worker = new Worker(
             host: "localhost",
             port: 6379,
         },
+
+        // Detect jobs whose worker disappeared while processing.
+        stalledInterval: 10_000,
+        maxStalledCount: 2,
+        lockDuration: 10_000,
     }
 );
 
+// A successfully processed job.
 worker.on("completed", (job) => {
     console.log(`Job ${job.id} completed`);
 });
 
-worker.on("failed", (job, error) => {
+// A job attempt failed. Persist FAILED only after retries are exhausted.
+worker.on("failed", async (job, error) => {
     console.error(`Job ${job?.id} failed:`, error);
+
+    if (!job) {
+        return;
+    }
+
+    try {
+        const state = await job.getState();
+
+        // Intermediate failures should be retried by BullMQ.
+        if (state !== "failed") {
+            console.log(
+                `Job ${job.id} is ${state}; waiting for retry or recovery`
+            );
+            return;
+        }
+
+        const { submissionId } = job.data ?? {};
+
+        if (!submissionId) {
+            console.error(
+                `Job ${job.id} has no submissionId`
+            );
+            return;
+        }
+
+        const message =
+            error instanceof Error
+                ? error.message
+                : String(error);
+
+        const updateResult = await pool.query(
+            `UPDATE submissions
+             SET status = 'FAILED',
+                 verdict = NULL,
+                 error_output = $1,
+                 completed_at = CURRENT_TIMESTAMP
+             WHERE id = $2
+               AND status <> 'COMPLETED'
+               AND status <> 'FAILED'
+             RETURNING user_id`,
+            [message, submissionId]
+        );
+
+        // Avoid duplicate failure notifications.
+        if (updateResult.rows.length === 0) {
+            return;
+        }
+
+        await publishSubmissionEvent({
+            type: "SUBMISSION_STATUS",
+            submissionId,
+            userId: updateResult.rows[0].user_id,
+            status: "FAILED",
+        });
+
+        console.log(
+            `Submission ${submissionId} marked FAILED after retries were exhausted`
+        );
+    } catch (handlerError) {
+        console.error(
+            `Failed to persist terminal failure for job ${job.id}:`,
+            handlerError
+        );
+    }
 });
+
+worker.on("error", (error) => {
+    console.error("BullMQ worker error:", error);
+});
+
+console.log("Submission worker started");

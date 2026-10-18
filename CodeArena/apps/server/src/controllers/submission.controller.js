@@ -6,6 +6,7 @@ import {
     getSubmissionById,
     getUserSubmissions,
     getUserSubmissionStats,
+    getProblemSubmissions,
 } from "../services/submission.service.js";
 
 import {
@@ -103,4 +104,21 @@ export const getUserSubmissionStatsController = async (req, res) => {
     const stats = await getUserSubmissionStats(user.id);
 
     res.status(200).json(stats);
+};
+
+export const getProblemSubmissionsController = async (req, res) => {
+    const problemId = Number(req.params.problemId);
+
+    if (!Number.isSafeInteger(problemId) || problemId <= 0) {
+        return res.status(400).json({
+            message: "Invalid problem ID",
+        });
+    }
+
+    const submissions = await getProblemSubmissions({
+        userId: req.user.id,
+        problemId,
+    });
+
+    res.status(200).json({ submissions });
 };

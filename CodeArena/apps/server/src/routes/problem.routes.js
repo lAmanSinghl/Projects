@@ -1,3 +1,4 @@
+
 import express from "express";
 
 import {
@@ -6,6 +7,7 @@ import {
     getProblem,
     deleteProblem,
     createTestCaseController,
+    createTestCasesBulkController,
     getTestCases
 } from "../controllers/problem.controller.js";
 
@@ -34,6 +36,13 @@ router.post(
     authMiddleware,
     requireAdmin,
     createTestCaseController
+);
+
+router.post(
+    "/:slug/test-cases/bulk",
+    authMiddleware,
+    requireAdmin,
+    createTestCasesBulkController
 );
 
 router.delete(
