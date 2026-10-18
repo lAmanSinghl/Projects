@@ -151,8 +151,7 @@ const worker = new Worker(
 
             if (testCases.length === 0) {
                 throw new Error(
-                    `No ${
-                        executionType === "run" ? "public " : ""
+                    `No ${executionType === "run" ? "public " : ""
                     }test cases found for problem ${submission.problem_id}`
                 );
             }
@@ -177,7 +176,7 @@ const worker = new Worker(
 
             const executionTimeMs =
                 Number.isFinite(result.executionTimeMs) &&
-                result.executionTimeMs >= 0
+                    result.executionTimeMs >= 0
                     ? Math.round(result.executionTimeMs)
                     : null;
 
@@ -219,6 +218,34 @@ const worker = new Worker(
                 (testCase) => testCase.status === "ACCEPTED"
             ).length;
 
+            // Build one entry for every public test case, in problem order.
+            const matchedResultsById = new Map(
+                matchedResults.map((item) => [
+                    String(item.testCaseId),
+                    item,
+                ])
+            );
+
+            const publicTestCases = allTestCases
+                .filter((testCase) => testCase.is_hidden === false)
+                .map((testCase, index) => {
+                    const executed = matchedResultsById.get(
+                        String(testCase.id)
+                    );
+
+                    return {
+                        testCaseId: testCase.id,
+                        testCaseIndex: index,
+                        status: executed?.status ?? "NOT_RUN",
+                        input: testCase.input,
+                        expectedOutput: testCase.expected_output,
+                        actualOutput: executed?.actualOutput ?? null,
+                        stderr: executed?.stderr ?? "",
+                        exitCode: executed?.exitCode ?? null,
+                        executionTimeMs:
+                            executed?.executionTimeMs ?? null,
+                    };
+                });
             // Keep the first non-accepted test case.
             const failedTestCase =
                 matchedResults.find(
@@ -287,10 +314,9 @@ const worker = new Worker(
             );
 
             console.log(
-                `Submission ${submissionId} runtime: ${
-                    executionTimeMs === null
-                        ? "not available"
-                        : `${executionTimeMs} ms`
+                `Submission ${submissionId} runtime: ${executionTimeMs === null
+                    ? "not available"
+                    : `${executionTimeMs} ms`
                 }`
             );
 
@@ -301,6 +327,13 @@ const worker = new Worker(
                 userId: submission.user_id,
                 status: "COMPLETED",
                 verdict: result.verdict,
+                executionType,
+                executionTimeMs,
+                passedTestCases,
+                totalTestCases,
+
+                // Individual case results are sent only for Run.
+                ...(executionType === "run" ? { publicTestCases } : {}),
             });
 
             // 9. Return safe details to BullMQ consumers.
